@@ -23,6 +23,9 @@ const DashboardPage = lazy(() =>
 const TournamentsPage = lazy(() =>
   import('@pages/TournamentsPage').then((m) => ({ default: m.TournamentsPage })),
 );
+const TournamentDetailPage = lazy(() =>
+  import('@pages/TournamentDetailPage').then((m) => ({ default: m.TournamentDetailPage })),
+);
 const TeamsPage = lazy(() => import('@pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
 const GamesPage = lazy(() => import('@pages/GamesPage').then((m) => ({ default: m.GamesPage })));
 const StatisticsPage = lazy(() =>
@@ -50,6 +53,7 @@ export const router = createHashRouter([
       { index: true, element: <DashboardPage /> },
 
       { path: 'tournaments', element: <TournamentsPage /> },
+      { path: 'tournaments/:id', element: <TournamentDetailPage /> },
       // Detail routes (wizard, tournament overview, stage view, match list and
       // match detail) are added alongside the features behind them.
 

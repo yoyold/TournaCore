@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 
 export interface PageHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
   /** Primary actions, right-aligned next to the title. */
-  actions?: ReactNode;
+  actions?: ReactNode | undefined;
 }
 
 /** Shared page header so spacing and hierarchy stay consistent across pages. */

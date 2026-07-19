@@ -1,4 +1,10 @@
 import '@testing-library/jest-dom/vitest';
+/*
+ * Initialise i18n for component tests. Without it `useTranslation` returns the
+ * key instead of the string, so assertions would silently verify key names
+ * rather than what a user actually reads.
+ */
+import '@/i18n/config';
 
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';

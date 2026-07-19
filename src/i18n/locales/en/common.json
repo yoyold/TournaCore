@@ -104,5 +104,39 @@
     "boundaryHint": "Your saved data is not affected.",
     "reload": "Reload page",
     "details": "Technical details"
+  },
+  "bracket": {
+    "label": "Bracket",
+    "bye": "Bye",
+    "tbd": "TBD",
+    "unknownTeam": "Unknown team",
+    "empty": "This stage has no matches yet.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Reset zoom",
+    "status": {
+      "pending": "Pending",
+      "ready": "Ready",
+      "live": "Live",
+      "completed": "Completed",
+      "walkover": "Walkover",
+      "cancelled": "Cancelled"
+    }
+  },
+  "tournaments": {
+    "createDemo": "Create demo tournament",
+    "emptyTitle": "No tournaments yet",
+    "emptyHint": "Create a demo tournament to try out the bracket.",
+    "participantCount": "{{count}} participants",
+    "participantCount_one": "{{count}} participant",
+    "notFound": "This tournament does not exist.",
+    "completed": "Completed",
+    "status": {
+      "draft": "Draft",
+      "registration": "Registration",
+      "live": "Live",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
   }
 }

@@ -104,5 +104,39 @@
     "boundaryHint": "Deine gespeicherten Daten sind davon nicht betroffen.",
     "reload": "Seite neu laden",
     "details": "Technische Details"
+  },
+  "bracket": {
+    "label": "Turnierbaum",
+    "bye": "Freilos",
+    "tbd": "Offen",
+    "unknownTeam": "Unbekanntes Team",
+    "empty": "Für diese Phase gibt es noch keine Matches.",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "zoomReset": "Zoom zurücksetzen",
+    "status": {
+      "pending": "Ausstehend",
+      "ready": "Bereit",
+      "live": "Live",
+      "completed": "Beendet",
+      "walkover": "Kampflos",
+      "cancelled": "Abgesagt"
+    }
+  },
+  "tournaments": {
+    "createDemo": "Demo-Turnier anlegen",
+    "emptyTitle": "Noch keine Turniere",
+    "emptyHint": "Lege ein Demo-Turnier an, um den Turnierbaum auszuprobieren.",
+    "participantCount": "{{count}} Teilnehmer",
+    "participantCount_one": "{{count}} Teilnehmer",
+    "notFound": "Dieses Turnier existiert nicht.",
+    "completed": "Abgeschlossen",
+    "status": {
+      "draft": "Entwurf",
+      "registration": "Anmeldung",
+      "live": "Laufend",
+      "completed": "Abgeschlossen",
+      "cancelled": "Abgesagt"
+    }
   }
 }
