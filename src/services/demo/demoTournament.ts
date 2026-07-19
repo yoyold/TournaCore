@@ -29,20 +29,28 @@ import {
  * pads to sixteen and the top three seeds receive byes. It exercises the case
  * most bracket software gets wrong.
  */
-const TEAM_NAMES: readonly (readonly [string, string, string])[] = [
-  ['Nova Collective', 'NOV', 'EU'],
-  ['Iron Meridian', 'IRM', 'NA'],
-  ['Solstice Nine', 'SN9', 'EU'],
-  ['Pale Horizon', 'PHZ', 'APAC'],
-  ['Verdant Order', 'VRD', 'EU'],
-  ['Cobalt Drift', 'CBD', 'NA'],
-  ['Ashen Vanguard', 'ASH', 'SA'],
-  ['Quiet Static', 'QST', 'EU'],
-  ['Halcyon Rift', 'HAL', 'APAC'],
-  ['Umbra Syndicate', 'UMB', 'NA'],
-  ['Ferrous Crown', 'FER', 'EU'],
-  ['Tidal Reverie', 'TDR', 'APAC'],
-  ['Lantern Bearers', 'LTB', 'SA'],
+interface DemoTeam {
+  name: string;
+  tag: string;
+  region: string;
+  /** ISO 3166-1 alpha-2, shown as a flag in the bracket. */
+  countryCode: string;
+}
+
+const TEAM_NAMES: readonly DemoTeam[] = [
+  { name: 'Nova Collective', tag: 'NOV', region: 'EU', countryCode: 'DE' },
+  { name: 'Iron Meridian', tag: 'IRM', region: 'NA', countryCode: 'US' },
+  { name: 'Solstice Nine', tag: 'SN9', region: 'EU', countryCode: 'SE' },
+  { name: 'Pale Horizon', tag: 'PHZ', region: 'APAC', countryCode: 'KR' },
+  { name: 'Verdant Order', tag: 'VRD', region: 'EU', countryCode: 'FR' },
+  { name: 'Cobalt Drift', tag: 'CBD', region: 'NA', countryCode: 'CA' },
+  { name: 'Ashen Vanguard', tag: 'ASH', region: 'SA', countryCode: 'BR' },
+  { name: 'Quiet Static', tag: 'QST', region: 'EU', countryCode: 'PL' },
+  { name: 'Halcyon Rift', tag: 'HAL', region: 'APAC', countryCode: 'JP' },
+  { name: 'Umbra Syndicate', tag: 'UMB', region: 'NA', countryCode: 'US' },
+  { name: 'Ferrous Crown', tag: 'FER', region: 'EU', countryCode: 'GB' },
+  { name: 'Tidal Reverie', tag: 'TDR', region: 'APAC', countryCode: 'AU' },
+  { name: 'Lantern Bearers', tag: 'LTB', region: 'SA', countryCode: 'AR' },
 ];
 
 const PREFIX = 'demo';
@@ -68,11 +76,12 @@ export interface DemoData {
 export function buildDemoTournament(): DemoData {
   const timestamp = now();
 
-  const teams: Team[] = TEAM_NAMES.map(([name, tag, region], i) => ({
+  const teams: Team[] = TEAM_NAMES.map(({ name, tag, region, countryCode }, i) => ({
     id: asId<TeamId>(`${PREFIX}-team-${String(i + 1)}`),
     name,
     tag,
     region,
+    countryCode,
     socials: [],
     archived: false,
     createdAt: timestamp,

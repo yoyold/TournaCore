@@ -9,7 +9,10 @@
     "node": ">=20.19.0"
   },
   "scripts": {
+    "sync:flags": "node scripts/sync-flags.mjs",
+    "predev": "npm run sync:flags",
     "dev": "vite",
+    "prebuild": "npm run sync:flags",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -27,6 +30,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "country-flag-icons": "^1.6.20",
     "dexie": "^4.4.4",
     "i18next": "^25.6.2",
     "i18next-browser-languagedetector": "^8.2.0",

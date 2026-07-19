@@ -124,14 +124,14 @@ export default tseslint.config(
    * exemption.
    */
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },
   },
 
-  // Node globals for config files
+  // Node globals for config files and build scripts
   {
-    files: ['*.config.{ts,js}', 'playwright.config.ts'],
+    files: ['*.config.{ts,js}', 'playwright.config.ts', 'scripts/**'],
     languageOptions: { globals: globals.node },
   },
 

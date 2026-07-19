@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { FlagIcon } from '@components/ui/FlagIcon';
 import { cn } from '@utils/cn';
 
 import type { ResolvedMatch, ResolvedSlot } from '@domain/formats/types';
@@ -126,12 +127,22 @@ function SlotRow({ slot, team, score, isWinner, isDecided }: SlotRowProps) {
           isWinner ? 'bg-success' : 'bg-transparent',
         )}
       />
-      <span
-        aria-hidden
-        className="grid h-4 w-6 shrink-0 place-items-center rounded-[3px] bg-hover text-[9px] font-semibold text-fg-muted"
-      >
-        {team?.tag ?? '—'}
-      </span>
+      {/*
+        Flag where the team has a country, tag badge otherwise. The two occupy
+        the same slot rather than sitting side by side: at 232px a node has room
+        for one identifier plus the name, and crowding both would truncate the
+        name that actually matters.
+      */}
+      {team?.countryCode !== undefined ? (
+        <FlagIcon countryCode={team.countryCode} width={16} />
+      ) : (
+        <span
+          aria-hidden
+          className="grid h-4 w-6 shrink-0 place-items-center rounded-[3px] bg-hover text-[9px] font-semibold text-fg-muted"
+        >
+          {team?.tag ?? '—'}
+        </span>
+      )}
       <span
         className={cn(
           'min-w-0 flex-1 truncate text-xs',

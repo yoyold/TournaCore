@@ -23,6 +23,9 @@ stats.html
 # Local planning notes, not part of the codebase
 docs/
 
+# Generated from the country-flag-icons dependency by scripts/sync-flags.mjs
+public/flags/
+
 # OS
 .DS_Store
 Thumbs.db
