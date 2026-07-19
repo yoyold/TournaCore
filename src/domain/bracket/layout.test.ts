@@ -89,12 +89,20 @@ describe('computeBracketLayout', () => {
     }
   });
 
-  it('places the third place match below the bracket, not across the final', () => {
+  it('places the third place match directly below the final, in the same column', () => {
     const layout = layoutFor(8, true);
     const third = layout.nodes.find((n) => n.bracket === 'third_place')!;
-    const others = layout.nodes.filter((n) => n.bracket !== 'third_place');
+    const final = layout.nodes.find((n) => n.round === 2 && n.bracket === 'winner')!;
 
-    expect(third.y).toBeGreaterThan(Math.max(...others.map((n) => n.y + n.height)));
+    // Same column, immediately underneath: centring it between the semifinals
+    // would land it on top of the final, and pushing it below the whole bracket
+    // leaves a void that reads as a rendering fault.
+    expect(third.x).toBe(final.x);
+    expect(third.y).toBeGreaterThan(final.y);
+    // At most one row pitch of separation, so the two read as adjacent.
+    expect(third.y - (final.y + final.height)).toBeLessThanOrEqual(
+      DEFAULT_LAYOUT_OPTIONS.nodeHeight + DEFAULT_LAYOUT_OPTIONS.rowGap,
+    );
   });
 
   it('reports a canvas that contains every node', () => {

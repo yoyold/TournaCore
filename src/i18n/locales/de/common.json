@@ -121,7 +121,9 @@
       "completed": "Beendet",
       "walkover": "Kampflos",
       "cancelled": "Abgesagt"
-    }
+    },
+    "versus": "gegen",
+    "thirdPlace": "Spiel um Platz 3:"
   },
   "tournaments": {
     "createDemo": "Demo-Turnier anlegen",
@@ -138,5 +140,20 @@
       "completed": "Abgeschlossen",
       "cancelled": "Abgesagt"
     }
+  },
+  "result": {
+    "title": "Ergebnis eintragen",
+    "roundLabel": "Runde {{round}}",
+    "close": "Sheet schließen",
+    "maps": "Maps",
+    "addMap": "Map hinzufügen",
+    "removeMap": "Map {{map}} entfernen",
+    "scoreFor": "Punkte {{team}}, Map {{map}}",
+    "decided": "{{team}} gewinnt {{score}}",
+    "open": "Noch offen — {{needed}} Mapsiege nötig",
+    "participantsUnknown": "Die Teilnehmer stehen noch nicht fest. Ergebnisse lassen sich erst eintragen, wenn beide Seiten feststehen.",
+    "noShow": "Nicht angetreten",
+    "walkoverFor": "Kampflos für {{team}}",
+    "clear": "Ergebnis löschen"
   }
 }

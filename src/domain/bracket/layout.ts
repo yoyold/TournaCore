@@ -119,12 +119,22 @@ export function computeBracketLayout(
   }
 
   /*
-   * The third place match is placed below the whole bracket rather than centred
-   * between the semifinals, where it would collide with the final.
+   * The third place match sits directly below the final, in the same column.
+   *
+   * Centring it between the semifinals — where its two feeders are — would put
+   * it on top of the final. Pushing it below the entire bracket avoids that but
+   * leaves a large void between the two, which reads as a rendering fault. The
+   * final's column holds nothing else, so placing it just underneath is both
+   * safe and where readers expect it.
    */
   for (const match of extras) {
     const x = padding + match.position.round * (nodeWidth + columnGap);
-    const y = maxY + pitch;
+    const sameColumn = nodes.filter((node) => node.x === x);
+    const below = sameColumn.reduce(
+      (lowest, node) => Math.max(lowest, node.y + node.height),
+      padding,
+    );
+    const y = below + pitch;
     positions.set(match.id, { x, y });
     nodes.push({
       matchId: match.id,

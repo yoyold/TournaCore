@@ -121,7 +121,9 @@
       "completed": "Completed",
       "walkover": "Walkover",
       "cancelled": "Cancelled"
-    }
+    },
+    "versus": "versus",
+    "thirdPlace": "Third place match:"
   },
   "tournaments": {
     "createDemo": "Create demo tournament",
@@ -138,5 +140,20 @@
       "completed": "Completed",
       "cancelled": "Cancelled"
     }
+  },
+  "result": {
+    "title": "Record result",
+    "roundLabel": "Round {{round}}",
+    "close": "Close sheet",
+    "maps": "Maps",
+    "addMap": "Add map",
+    "removeMap": "Remove map {{map}}",
+    "scoreFor": "Score for {{team}}, map {{map}}",
+    "decided": "{{team}} wins {{score}}",
+    "open": "Still open — {{needed}} map wins needed",
+    "participantsUnknown": "The participants are not determined yet. Results can be entered once both sides are known.",
+    "noShow": "Did not play",
+    "walkoverFor": "Walkover for {{team}}",
+    "clear": "Clear result"
   }
 }

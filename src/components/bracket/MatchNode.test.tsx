@@ -115,4 +115,33 @@ describe('MatchNode', () => {
     const node = screen.getByRole('button');
     expect(node).toHaveAttribute('tabindex', '0');
   });
+
+  /**
+   * The visible text sits in nested spans, several of them hidden, so without an
+   * explicit label the node is an anonymous button — indistinguishable from the
+   * dozen others in a bracket.
+   */
+  it('names the pairing for assistive technology', () => {
+    render(<MatchNode match={match()} teamOf={teamOf} onSelect={() => undefined} />);
+
+    const node = screen.getByRole('button', {
+      name: /Nova Collective gegen Iron Meridian/i,
+    });
+    expect(node).toBeInTheDocument();
+    expect(node.getAttribute('aria-label')).toContain('Bereit');
+  });
+
+  it('names an undetermined side rather than leaving a gap', () => {
+    render(
+      <MatchNode
+        match={match({ slotB: { kind: 'tbd', source: { kind: 'tbd' } }, status: 'pending' })}
+        teamOf={teamOf}
+        onSelect={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Nova Collective gegen Offen/i }),
+    ).toBeInTheDocument();
+  });
 });

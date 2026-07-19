@@ -40,6 +40,30 @@ export function MatchNode({ match, score, teamOf, onSelect, selected = false }: 
     ? t('bracket.bye')
     : `${formatOf(match)} · ${t(`bracket.status.${match.status}`)}`;
 
+  const teamA = teamOf(participantOf(match.slotA) ?? '');
+  const teamB = teamOf(participantOf(match.slotB) ?? '');
+
+  /*
+   * Without this the node is an anonymous button: the visible text lives in
+   * nested spans, several of them hidden, so assistive technology announces
+   * nothing useful. Spelling the pairing out makes the bracket navigable by
+   * keyboard and screen reader alike.
+   */
+  const accessibleName = [
+    // The section distinguishes the final from the third place match, which
+    // otherwise share a label while both sides are still undetermined.
+    match.position.bracket === 'third_place' ? t('bracket.thirdPlace') : undefined,
+    slotName(match.slotA, teamA, t),
+    t('bracket.versus'),
+    slotName(match.slotB, teamB, t),
+    '·',
+    formatOf(match),
+    '·',
+    t(`bracket.status.${match.status}`),
+  ]
+    .filter((part) => part !== undefined)
+    .join(' ');
+
   return (
     <div
       className={cn(
@@ -55,6 +79,7 @@ export function MatchNode({ match, score, teamOf, onSelect, selected = false }: 
         ? {
             role: 'button',
             tabIndex: 0,
+            'aria-label': accessibleName,
             onClick: () => {
               onSelect(match);
             },
@@ -69,7 +94,7 @@ export function MatchNode({ match, score, teamOf, onSelect, selected = false }: 
     >
       <SlotRow
         slot={match.slotA}
-        team={teamOf(participantOf(match.slotA) ?? '')}
+        team={teamA}
         score={visibleScore?.a}
         isWinner={isDecided && match.outcome?.winner === 'A'}
         isDecided={isDecided}
@@ -77,7 +102,7 @@ export function MatchNode({ match, score, teamOf, onSelect, selected = false }: 
       <div className="h-px bg-line" />
       <SlotRow
         slot={match.slotB}
-        team={teamOf(participantOf(match.slotB) ?? '')}
+        team={teamB}
         score={visibleScore?.b}
         isWinner={isDecided && match.outcome?.winner === 'B'}
         isDecided={isDecided}
@@ -104,12 +129,7 @@ interface SlotRowProps {
 function SlotRow({ slot, team, score, isWinner, isDecided }: SlotRowProps) {
   const { t } = useTranslation();
 
-  const name =
-    slot.kind === 'bye'
-      ? t('bracket.bye')
-      : slot.kind === 'tbd'
-        ? t('bracket.tbd')
-        : (team?.name ?? t('bracket.unknownTeam'));
+  const name = slotName(slot, team, t);
 
   return (
     <div
@@ -157,6 +177,13 @@ function SlotRow({ slot, team, score, isWinner, isDecided }: SlotRowProps) {
       </span>
     </div>
   );
+}
+
+/** Display name of a slot: the team, or what the slot is waiting for. */
+function slotName(slot: ResolvedSlot, team: Team | undefined, t: (key: string) => string): string {
+  if (slot.kind === 'bye') return t('bracket.bye');
+  if (slot.kind === 'tbd') return t('bracket.tbd');
+  return team?.name ?? t('bracket.unknownTeam');
 }
 
 function participantOf(slot: ResolvedSlot): string | undefined {
