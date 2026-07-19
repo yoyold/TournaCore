@@ -1,0 +1,108 @@
+{
+  "app": {
+    "name": "TournaCore",
+    "tagline": "Tournament management for esports events"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tournaments": "Tournaments",
+    "teams": "Teams",
+    "games": "Games",
+    "statistics": "Statistics",
+    "transfer": "Import / Export",
+    "settings": "Settings",
+    "newTournament": "New tournament",
+    "toggleSidebar": "Toggle sidebar",
+    "mainNavigation": "Main navigation"
+  },
+  "theme": {
+    "toggle": "Switch theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "common": {
+    "search": "Search",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading …",
+    "skipToContent": "Skip to content"
+  },
+  "placeholder": {
+    "inDevelopment": "This view is under development"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Overview of active tournaments and upcoming matches",
+      "activeTournaments": "Active tournaments",
+      "registeredTeams": "Registered teams",
+      "upcomingMatches": "Upcoming matches"
+    },
+    "tournaments": {
+      "title": "Tournaments",
+      "subtitle": "Manage all tournaments"
+    },
+    "teams": {
+      "title": "Teams",
+      "subtitle": "Cross-tournament team database"
+    },
+    "games": {
+      "title": "Games",
+      "subtitle": "Game titles and map pools"
+    },
+    "statistics": {
+      "title": "Statistics",
+      "subtitle": "Analytics across all tournaments"
+    },
+    "transfer": {
+      "title": "Import / Export",
+      "subtitle": "Back up and restore your data"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Appearance, language and data"
+    },
+    "imprint": {
+      "title": "Legal notice"
+    },
+    "privacy": {
+      "title": "Privacy policy"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "subtitle": "This address leads nowhere.",
+      "backHome": "Back to dashboard"
+    }
+  },
+  "settings": {
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "language": "Language",
+    "data": "Data",
+    "autosave": "Autosave",
+    "autosaveHint": "Changes are stored in your browser automatically."
+  },
+  "privacy": {
+    "localOnly": "All data stays on your device",
+    "localOnlyHint": "TournaCore has no server. Nothing you enter ever leaves this browser."
+  },
+  "legal": {
+    "imprint": "Legal notice",
+    "privacy": "Privacy",
+    "sourceCode": "Source code"
+  },
+  "error": {
+    "boundaryTitle": "Something went wrong",
+    "boundaryHint": "Your saved data is not affected.",
+    "reload": "Reload page",
+    "details": "Technical details"
+  }
+}

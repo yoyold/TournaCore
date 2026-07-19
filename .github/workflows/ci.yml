@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Formatting
+        run: npm run format:check
+
+      - name: ESLint (including layer boundaries)
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Check bundle budget
+        run: |
+          # Sum of all initial JS and CSS assets, gzipped.
+          BUDGET_KB=250
+          TOTAL=$(find dist/assets -type f \( -name '*.js' -o -name '*.css' \) \
+            -exec sh -c 'gzip -c "$1" | wc -c' _ {} \; | awk '{s+=$1} END {print int(s/1024)}')
+          echo "Total (gzip): ${TOTAL} kB — budget: ${BUDGET_KB} kB"
+          if [ "$TOTAL" -gt "$BUDGET_KB" ]; then
+            echo "::error::Bundle budget exceeded: ${TOTAL} kB > ${BUDGET_KB} kB"
+            exit 1
+          fi
+
+      - name: Check dependency licenses
+        run: npm run licenses
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # Includes the test that enforces the no-external-requests guarantee.
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  build-pages:
+    name: Build for GitHub Pages
+    # Nothing reaches production that has not passed every check. Without this
+    # dependency a push with failing tests would still deploy, since the build
+    # itself would succeed.
+    needs: [quality, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        # The repository name determines the subpath GitHub Pages serves from.
+        # For a custom domain, set VITE_BASE_PATH to "/" instead.
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

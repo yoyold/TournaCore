@@ -1,0 +1,108 @@
+{
+  "app": {
+    "name": "TournaCore",
+    "tagline": "Turnierverwaltung für Esport-Events"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tournaments": "Turniere",
+    "teams": "Teams",
+    "games": "Spiele",
+    "statistics": "Statistiken",
+    "transfer": "Import / Export",
+    "settings": "Einstellungen",
+    "newTournament": "Neues Turnier",
+    "toggleSidebar": "Seitenleiste ein-/ausklappen",
+    "mainNavigation": "Hauptnavigation"
+  },
+  "theme": {
+    "toggle": "Theme wechseln",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System",
+    "switchToLight": "Zu hellem Theme wechseln",
+    "switchToDark": "Zu dunklem Theme wechseln"
+  },
+  "common": {
+    "search": "Suchen",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "loading": "Wird geladen …",
+    "skipToContent": "Zum Inhalt springen"
+  },
+  "placeholder": {
+    "inDevelopment": "Diese Ansicht befindet sich in Entwicklung"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Überblick über aktive Turniere und anstehende Matches",
+      "activeTournaments": "Aktive Turniere",
+      "registeredTeams": "Erfasste Teams",
+      "upcomingMatches": "Anstehende Matches"
+    },
+    "tournaments": {
+      "title": "Turniere",
+      "subtitle": "Alle Turniere verwalten"
+    },
+    "teams": {
+      "title": "Teams",
+      "subtitle": "Turnierübergreifende Teamdatenbank"
+    },
+    "games": {
+      "title": "Spiele",
+      "subtitle": "Spieltitel und Map-Pools"
+    },
+    "statistics": {
+      "title": "Statistiken",
+      "subtitle": "Auswertungen über alle Turniere"
+    },
+    "transfer": {
+      "title": "Import / Export",
+      "subtitle": "Daten sichern und wiederherstellen"
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "subtitle": "Darstellung, Sprache und Daten"
+    },
+    "imprint": {
+      "title": "Impressum"
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung"
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "subtitle": "Diese Adresse führt ins Leere.",
+      "backHome": "Zum Dashboard"
+    }
+  },
+  "settings": {
+    "appearance": "Darstellung",
+    "theme": "Theme",
+    "language": "Sprache",
+    "data": "Daten",
+    "autosave": "Automatisch speichern",
+    "autosaveHint": "Änderungen werden ohne Zutun im Browser gespeichert."
+  },
+  "privacy": {
+    "localOnly": "Alle Daten bleiben auf deinem Gerät",
+    "localOnlyHint": "TournaCore hat keinen Server. Nichts, was du eingibst, verlässt diesen Browser."
+  },
+  "legal": {
+    "imprint": "Impressum",
+    "privacy": "Datenschutz",
+    "sourceCode": "Quellcode"
+  },
+  "error": {
+    "boundaryTitle": "Etwas ist schiefgelaufen",
+    "boundaryHint": "Deine gespeicherten Daten sind davon nicht betroffen.",
+    "reload": "Seite neu laden",
+    "details": "Technische Details"
+  }
+}

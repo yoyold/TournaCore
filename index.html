@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="TournaCore – Turnierverwaltung für Esport- und Gaming-Events. Läuft vollständig im Browser, alle Daten bleiben auf deinem Gerät."
+    />
+    <meta name="theme-color" content="#0a0b0f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>TournaCore</title>
+    <script>
+      /**
+       * Applies the theme BEFORE first paint to avoid a flash of the wrong one.
+       * Must stay inline and must match the storage key used by the settings
+       * store. Deliberately defensive: if storage access fails (private mode,
+       * blocked storage), the system preference applies.
+       */
+      (function () {
+        try {
+          var stored = localStorage.getItem('tournacore.settings');
+          var theme = stored ? JSON.parse(stored).state.theme : 'system';
+          if (theme === 'system' || !theme) {
+            theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      TournaCore benötigt JavaScript. Die Anwendung läuft vollständig in deinem Browser – es gibt
+      keinen Server, der die Seite stattdessen rendern könnte.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

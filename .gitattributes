@@ -1,0 +1,19 @@
+# Force LF in the repository regardless of the developer's operating system.
+# Without this, mixed Windows/Linux environments produce diffs consisting only of
+# line endings, and Prettier (endOfLine: lf) would fail in CI against locally
+# checked out CRLF files.
+* text=auto eol=lf
+
+# Never touch binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# Keep the lockfile out of diffs.
+package-lock.json -diff linguist-generated
