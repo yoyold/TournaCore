@@ -21,6 +21,8 @@ import {
   tournamentRepository,
 } from '@services/db';
 
+import type { AssembledTournament } from '@services/tournament/assembleTournament';
+
 type ById<TId extends string, TEntity> = Record<TId, TEntity>;
 
 export interface DataState {
@@ -43,6 +45,9 @@ export interface DataState {
   saveStage: (stage: Stage) => Promise<void>;
   saveMatch: (match: Match) => Promise<void>;
   saveMatches: (matches: readonly Match[]) => Promise<void>;
+
+  /** Persists a freshly assembled tournament together with its new teams and game. */
+  createTournament: (assembled: AssembledTournament) => Promise<void>;
 
   removeTournament: (id: TournamentId) => Promise<void>;
   /** Archives rather than deletes, to keep match history intact. */
@@ -168,6 +173,27 @@ export const useDataStore = create<DataState>()((set, get) => {
         const next = matches.map((match) => ({ ...match, updatedAt: timestamp }));
         await matchRepository.putMany(next);
         set((state) => ({ matches: { ...state.matches, ...index(next) } }));
+      });
+    },
+
+    createTournament: async (assembled) => {
+      await guard(async () => {
+        // Order matters: teams and the game are referenced by the tournament,
+        // and the stage is referenced by the tournament's stageIds. Dependencies
+        // are written before the records that point at them.
+        if (assembled.newGame) await gameRepository.put(assembled.newGame);
+        if (assembled.newTeams.length > 0) await teamRepository.putMany(assembled.newTeams);
+        await tournamentRepository.put(assembled.tournament);
+        await stageRepository.put(assembled.stage);
+
+        set((state) => ({
+          games: assembled.newGame
+            ? { ...state.games, [assembled.newGame.id]: assembled.newGame }
+            : state.games,
+          teams: { ...state.teams, ...index(assembled.newTeams) },
+          tournaments: { ...state.tournaments, [assembled.tournament.id]: assembled.tournament },
+          stages: { ...state.stages, [assembled.stage.id]: assembled.stage },
+        }));
       });
     },
 

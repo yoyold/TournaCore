@@ -33,7 +33,9 @@
     "back": "Zurück",
     "next": "Weiter",
     "loading": "Wird geladen …",
-    "skipToContent": "Zum Inhalt springen"
+    "skipToContent": "Zum Inhalt springen",
+    "yes": "Ja",
+    "no": "Nein"
   },
   "placeholder": {
     "inDevelopment": "Diese Ansicht befindet sich in Entwicklung"
@@ -155,5 +157,33 @@
     "noShow": "Nicht angetreten",
     "walkoverFor": "Kampflos für {{team}}",
     "clear": "Ergebnis löschen"
+  },
+  "wizard": {
+    "title": "Neues Turnier",
+    "subtitle": "In vier Schritten zum fertigen Turnierbaum",
+    "create": "Turnier erstellen",
+    "participantsHint": "Ein Team pro Zeile. Optional ein Ländercode am Ende, z. B. „Nova Collective, DE“.",
+    "participantCount": "{{count}} Teilnehmer",
+    "participantCount_one": "{{count}} Teilnehmer",
+    "noParticipants": "Noch keine Teilnehmer eingegeben.",
+    "formatHint": "Single Elimination: K.-o.-System mit automatischen Freilosen bei ungerader Teamzahl.",
+    "thirdPlaceHint": "Zusätzliches Match zwischen den beiden Halbfinal-Verlierern.",
+    "step": {
+      "basics": "Grunddaten",
+      "participants": "Teilnehmer",
+      "format": "Format",
+      "preview": "Vorschau"
+    },
+    "field": {
+      "name": "Turniername",
+      "game": "Spiel",
+      "organizer": "Veranstalter",
+      "startsAt": "Startzeitpunkt",
+      "description": "Beschreibung",
+      "participants": "Teilnehmer (einer pro Zeile)",
+      "defaultBestOf": "Standard-Format",
+      "finalBestOf": "Finale",
+      "thirdPlace": "Spiel um Platz 3"
+    }
   }
 }

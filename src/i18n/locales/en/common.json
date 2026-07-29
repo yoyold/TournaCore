@@ -33,7 +33,9 @@
     "back": "Back",
     "next": "Next",
     "loading": "Loading …",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "yes": "Yes",
+    "no": "No"
   },
   "placeholder": {
     "inDevelopment": "This view is under development"
@@ -155,5 +157,33 @@
     "noShow": "Did not play",
     "walkoverFor": "Walkover for {{team}}",
     "clear": "Clear result"
+  },
+  "wizard": {
+    "title": "New tournament",
+    "subtitle": "A finished bracket in four steps",
+    "create": "Create tournament",
+    "participantsHint": "One team per line. Optionally a country code at the end, e.g. \"Nova Collective, DE\".",
+    "participantCount": "{{count}} participants",
+    "participantCount_one": "{{count}} participant",
+    "noParticipants": "No participants entered yet.",
+    "formatHint": "Single elimination: knockout with automatic byes for an uneven number of teams.",
+    "thirdPlaceHint": "An extra match between the two semifinal losers.",
+    "step": {
+      "basics": "Basics",
+      "participants": "Participants",
+      "format": "Format",
+      "preview": "Preview"
+    },
+    "field": {
+      "name": "Tournament name",
+      "game": "Game",
+      "organizer": "Organizer",
+      "startsAt": "Start time",
+      "description": "Description",
+      "participants": "Participants (one per line)",
+      "defaultBestOf": "Default format",
+      "finalBestOf": "Final",
+      "thirdPlace": "Third place match"
+    }
   }
 }

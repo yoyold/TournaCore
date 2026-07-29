@@ -1,7 +1,7 @@
-import { Sparkles, Trophy } from 'lucide-react';
+import { Plus, Sparkles, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Button } from '@components/ui/Button';
 import { Card, CardBody } from '@components/ui/Card';
@@ -11,6 +11,7 @@ import { useDataStore } from '@store/slices/dataSlice';
 
 export function TournamentsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const tournaments = useDataStore((s) => s.tournaments);
   const hydrated = useDataStore((s) => s.hydrated);
   const saveTeam = useDataStore((s) => s.saveTeam);
@@ -49,16 +50,27 @@ export function TournamentsPage() {
         title={t('pages.tournaments.title')}
         subtitle={t('pages.tournaments.subtitle')}
         actions={
-          <Button
-            variant="secondary"
-            icon={<Sparkles size={16} aria-hidden />}
-            disabled={seeding}
-            onClick={() => {
-              void createDemo();
-            }}
-          >
-            {t('tournaments.createDemo')}
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              icon={<Sparkles size={16} aria-hidden />}
+              disabled={seeding}
+              onClick={() => {
+                void createDemo();
+              }}
+            >
+              {t('tournaments.createDemo')}
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Plus size={16} aria-hidden />}
+              onClick={() => {
+                void navigate('/tournaments/new');
+              }}
+            >
+              {t('nav.newTournament')}
+            </Button>
+          </>
         }
       />
 

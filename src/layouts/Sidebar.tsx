@@ -9,7 +9,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 import { Button } from '@components/ui/Button';
 import { cn } from '@utils/cn';
@@ -44,6 +44,7 @@ export interface SidebarProps {
 
 export function Sidebar({ collapsed }: SidebarProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const renderItem = ({ to, labelKey, icon: Icon, end }: NavItem) => (
     <li key={to}>
@@ -89,6 +90,9 @@ export function Sidebar({ collapsed }: SidebarProps) {
           className={collapsed ? '' : 'w-full justify-center'}
           icon={<Plus size={18} aria-hidden />}
           aria-label={collapsed ? t('nav.newTournament') : undefined}
+          onClick={() => {
+            void navigate('/tournaments/new');
+          }}
         >
           {t('nav.newTournament')}
         </Button>
