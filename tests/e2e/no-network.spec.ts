@@ -46,3 +46,25 @@ test('ships a Content Security Policy that blocks outbound connections', async (
   expect(csp).toContain("default-src 'self'");
   expect(csp).toContain("object-src 'none'");
 });
+
+/**
+ * Regression guard for the policy blocking our own code.
+ *
+ * The theme setter in index.html is an inline script, which `script-src 'self'`
+ * blocks unless its hash is allow-listed. When it was blocked, every test still
+ * passed — the React hook sets the theme after mount — and the only symptom was
+ * a console error in production. This asserts on exactly that.
+ */
+test('runs without any content security policy violation', async ({ page }) => {
+  const violations: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && /content security policy/i.test(message.text())) {
+      violations.push(message.text());
+    }
+  });
+
+  await page.goto('./');
+  await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+
+  expect(violations, violations.join('\n')).toEqual([]);
+});
