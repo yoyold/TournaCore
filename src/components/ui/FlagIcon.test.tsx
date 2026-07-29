@@ -61,4 +61,18 @@ describe('FlagIcon', () => {
     render(<FlagIcon countryCode="US" />);
     expect(flag()).toHaveAttribute('loading', 'lazy');
   });
+
+  it('lays a decorative gloss overlay over the flag by default', () => {
+    const { container } = render(<FlagIcon countryCode="IT" />);
+    // The overlay is a sibling span carrying the gradient; the flag image itself
+    // stays untouched.
+    const overlays = container.querySelectorAll('span > span[aria-hidden]');
+    expect(overlays.length).toBe(1);
+  });
+
+  it('omits the gloss when asked for a flat flag', () => {
+    const { container } = render(<FlagIcon countryCode="IT" glossy={false} />);
+    expect(container.querySelectorAll('span > span[aria-hidden]').length).toBe(0);
+    expect(flag()).not.toBeNull();
+  });
 });

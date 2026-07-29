@@ -8,10 +8,30 @@ export interface FlagIconProps {
   countryCode?: string | undefined;
   /** Rendered width in pixels. Height follows the 3:2 aspect ratio. */
   width?: number;
+  /**
+   * Glossy sheen in the style of the classic tournament-wiki flag icons.
+   * On by default; pass false for a flat flag.
+   */
+  glossy?: boolean;
   className?: string | undefined;
 }
 
 const CODE_PATTERN = /^[A-Za-z]{2}$/;
+
+/**
+ * Glossy highlight laid over the flag.
+ *
+ * The look tournament wikis use: a bright top half, a hard specular line just
+ * below the middle, then a dim reflection below. It is a single gradient rather
+ * than an image, so it costs nothing and scales with the flag.
+ */
+const GLOSS =
+  'linear-gradient(to bottom,' +
+  ' rgba(255,255,255,0.55) 0%,' +
+  ' rgba(255,255,255,0.18) 47%,' +
+  ' rgba(255,255,255,0.05) 48%,' +
+  ' rgba(255,255,255,0.00) 60%,' +
+  ' rgba(0,0,0,0.10) 100%)';
 
 /**
  * Country flag, served from our own origin.
@@ -30,28 +50,30 @@ const CODE_PATTERN = /^[A-Za-z]{2}$/;
  * What remains is bundled SVGs referenced by `<img>`. They stay out of the
  * JavaScript bundle and the browser fetches each one only when a flag actually
  * appears, so a bracket with four nations costs four small files rather than the
- * whole set.
+ * whole set. The glossy sheen on top is a pure CSS overlay, so it adds no assets.
  */
-export function FlagIcon({ countryCode, width = 16, className }: FlagIconProps) {
+export function FlagIcon({ countryCode, width = 16, glossy = true, className }: FlagIconProps) {
   const { i18n } = useTranslation();
   const [failed, setFailed] = useState(false);
 
   const code = countryCode?.trim().toUpperCase();
   if (code === undefined || !CODE_PATTERN.test(code) || failed) return null;
 
+  const height = Math.round((width * 2) / 3);
+
   /*
    * Decorative: the team name next to it already identifies the entry, and
    * announcing a country for every side of every match would bury that name in
    * noise. The title still surfaces it on hover for sighted users.
    */
-  return (
+  const image = (
     <img
       src={`${import.meta.env.BASE_URL}flags/${code}.svg`}
       alt=""
       aria-hidden
       title={countryName(code, i18n.language)}
       width={width}
-      height={Math.round((width * 2) / 3)}
+      height={height}
       loading="lazy"
       decoding="async"
       onError={() => {
@@ -59,9 +81,40 @@ export function FlagIcon({ countryCode, width = 16, className }: FlagIconProps) 
         // broken image placeholder.
         setFailed(true);
       }}
-      className={cn('shrink-0 rounded-[1px] object-cover', className)}
-      style={{ width, height: Math.round((width * 2) / 3) }}
+      className="block h-full w-full object-cover"
     />
+  );
+
+  if (!glossy) {
+    return (
+      <span
+        className={cn('inline-block shrink-0 overflow-hidden rounded-[2px]', className)}
+        style={{ width, height }}
+      >
+        {image}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        // The ring keeps a white-heavy flag (Japan, Poland) from dissolving into
+        // a light card, and the shadow lifts it off the surface for the gloss to
+        // read as a sheen rather than a smear.
+        'relative inline-block shrink-0 overflow-hidden rounded-[2px]',
+        'ring-1 ring-black/20 shadow-[0_1px_1px_rgba(0,0,0,0.25)]',
+        className,
+      )}
+      style={{ width, height }}
+    >
+      {image}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-[2px]"
+        style={{ background: GLOSS }}
+      />
+    </span>
   );
 }
 
