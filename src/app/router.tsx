@@ -30,6 +30,12 @@ const TournamentDetailPage = lazy(() =>
   import('@pages/TournamentDetailPage').then((m) => ({ default: m.TournamentDetailPage })),
 );
 const TeamsPage = lazy(() => import('@pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
+const TeamDetailPage = lazy(() =>
+  import('@pages/TeamDetailPage').then((m) => ({ default: m.TeamDetailPage })),
+);
+const TeamFormPage = lazy(() =>
+  import('@pages/TeamFormPage').then((m) => ({ default: m.TeamFormPage })),
+);
 const GamesPage = lazy(() => import('@pages/GamesPage').then((m) => ({ default: m.GamesPage })));
 const StatisticsPage = lazy(() =>
   import('@pages/StatisticsPage').then((m) => ({ default: m.StatisticsPage })),
@@ -62,6 +68,10 @@ export const router = createHashRouter([
       // match detail) are added alongside the features behind them.
 
       { path: 'teams', element: <TeamsPage /> },
+      // Static before dynamic, so "new" is not read as a team id.
+      { path: 'teams/new', element: <TeamFormPage /> },
+      { path: 'teams/:id', element: <TeamDetailPage /> },
+      { path: 'teams/:id/edit', element: <TeamFormPage /> },
       { path: 'games', element: <GamesPage /> },
       { path: 'statistics', element: <StatisticsPage /> },
       { path: 'transfer', element: <TransferPage /> },

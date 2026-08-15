@@ -185,5 +185,39 @@
       "finalBestOf": "Final",
       "thirdPlace": "Third place match"
     }
+  },
+  "teams": {
+    "create": "Add team",
+    "createTitle": "New team",
+    "createSubtitle": "Reusable in every future tournament",
+    "editTitle": "Edit team",
+    "searchPlaceholder": "Name or tag …",
+    "showArchived": "Show archived ({{count}})",
+    "emptyTitle": "No teams yet",
+    "emptyHint": "Teams are created automatically when you set up a tournament — or add them here directly.",
+    "noMatches": "No matches",
+    "noMatchesHint": "No team matches this search.",
+    "notFound": "This team does not exist.",
+    "archive": "Archive",
+    "archived": "Archived",
+    "winRate": "Win rate",
+    "record": "Record",
+    "maps": "Maps",
+    "tournaments": "Tournaments",
+    "tournamentsHint": "Won of entered",
+    "history": "Match history",
+    "noHistory": "No matches played yet.",
+    "opponents": "Head-to-head",
+    "noOpponents": "No opponents yet.",
+    "winShort": "W",
+    "lossShort": "L",
+    "field": {
+      "name": "Team name",
+      "tag": "Tag",
+      "countryCode": "Country (ISO code)",
+      "region": "Region",
+      "description": "Description",
+      "foundedAt": "Founded"
+    }
   }
 }

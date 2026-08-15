@@ -185,5 +185,39 @@
       "finalBestOf": "Finale",
       "thirdPlace": "Spiel um Platz 3"
     }
+  },
+  "teams": {
+    "create": "Team anlegen",
+    "createTitle": "Neues Team",
+    "createSubtitle": "Wird in allen künftigen Turnieren wiederverwendbar",
+    "editTitle": "Team bearbeiten",
+    "searchPlaceholder": "Name oder Kürzel …",
+    "showArchived": "Archivierte anzeigen ({{count}})",
+    "emptyTitle": "Noch keine Teams",
+    "emptyHint": "Teams entstehen automatisch beim Anlegen eines Turniers — oder du legst sie hier direkt an.",
+    "noMatches": "Keine Treffer",
+    "noMatchesHint": "Kein Team passt zu dieser Suche.",
+    "notFound": "Dieses Team existiert nicht.",
+    "archive": "Archivieren",
+    "archived": "Archiviert",
+    "winRate": "Winrate",
+    "record": "Bilanz",
+    "maps": "Maps",
+    "tournaments": "Turniere",
+    "tournamentsHint": "Gewonnen von teilgenommen",
+    "history": "Matchhistorie",
+    "noHistory": "Noch keine Matches gespielt.",
+    "opponents": "Gegnerbilanz",
+    "noOpponents": "Noch keine Gegner.",
+    "winShort": "S",
+    "lossShort": "N",
+    "field": {
+      "name": "Teamname",
+      "tag": "Kürzel",
+      "countryCode": "Land (ISO-Code)",
+      "region": "Region",
+      "description": "Beschreibung",
+      "foundedAt": "Gegründet"
+    }
   }
 }
