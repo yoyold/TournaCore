@@ -19,9 +19,13 @@ import {
   stageRepository,
   teamRepository,
   tournamentRepository,
+  PRE_IMPORT_BACKUP_KEY,
+  db,
+  writeMeta,
 } from '@services/db';
 
 import type { AssembledTournament } from '@services/tournament/assembleTournament';
+import type { ImportMode, TransferData } from '@services/transfer/transfer';
 
 type ById<TId extends string, TEntity> = Record<TId, TEntity>;
 
@@ -48,6 +52,11 @@ export interface DataState {
 
   /** Persists a freshly assembled tournament together with its new teams and game. */
   createTournament: (assembled: AssembledTournament) => Promise<void>;
+
+  /** Everything currently held, for export. */
+  snapshot: () => TransferData;
+  /** Replaces or merges stored data with an imported set. */
+  applyImport: (data: TransferData, mode: ImportMode) => Promise<void>;
 
   removeTournament: (id: TournamentId) => Promise<void>;
   /** Archives rather than deletes, to keep match history intact. */
@@ -194,6 +203,60 @@ export const useDataStore = create<DataState>()((set, get) => {
           tournaments: { ...state.tournaments, [assembled.tournament.id]: assembled.tournament },
           stages: { ...state.stages, [assembled.stage.id]: assembled.stage },
         }));
+      });
+    },
+
+    snapshot: () => {
+      const state = get();
+      return {
+        games: Object.values(state.games),
+        teams: Object.values(state.teams),
+        tournaments: Object.values(state.tournaments),
+        stages: Object.values(state.stages),
+        matches: Object.values(state.matches),
+      };
+    },
+
+    applyImport: async (data, mode) => {
+      await guard(async () => {
+        /*
+         * Snapshot the current state first. An import cannot otherwise be undone,
+         * and with no server-side backup that would make a mistaken import
+         * permanent.
+         */
+        await writeMeta(PRE_IMPORT_BACKUP_KEY, {
+          takenAt: now(),
+          data: get().snapshot(),
+        });
+
+        const database = db();
+        await database.transaction(
+          'rw',
+          [database.games, database.teams, database.tournaments, database.stages, database.matches],
+          async () => {
+            if (mode === 'replace') {
+              await Promise.all([
+                database.games.clear(),
+                database.teams.clear(),
+                database.tournaments.clear(),
+                database.stages.clear(),
+                database.matches.clear(),
+              ]);
+            }
+
+            await Promise.all([
+              database.games.bulkPut(data.games),
+              database.teams.bulkPut(data.teams),
+              database.tournaments.bulkPut(data.tournaments),
+              database.stages.bulkPut(data.stages),
+              database.matches.bulkPut(data.matches),
+            ]);
+          },
+        );
+
+        // Read back rather than merging in memory, so the store always mirrors
+        // what storage actually holds after the transaction.
+        await get().hydrate();
       });
     },
 

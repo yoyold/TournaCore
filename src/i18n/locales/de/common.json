@@ -238,5 +238,39 @@
       "peak": "Bestwert",
       "record": "Bilanz"
     }
+  },
+  "transfer": {
+    "exportTitle": "Export",
+    "exportHint": "Speichert alle Turniere, Teams und Ergebnisse als JSON-Datei auf deinem Gerät. Da es keinen Server gibt, ist das die einzige Sicherung.",
+    "contains": "Enthält {{tournaments}} Turniere, {{teams}} Teams und {{matches}} Matches.",
+    "export": "Als JSON exportieren",
+    "importTitle": "Import",
+    "importHint": "Liest eine zuvor exportierte Datei ein. Die Datei wird vollständig geprüft, bevor etwas übernommen wird.",
+    "chooseFile": "Datei auswählen",
+    "previewTitle": "Vorschau",
+    "previewTournaments": "{{count}} Turniere",
+    "previewTeams": "{{count}} Teams",
+    "previewMatches": "{{count}} Matches",
+    "migrated": "Die Datei stammt aus Schema {{from}} und wurde auf {{to}} angehoben.",
+    "modeLegend": "Wie soll importiert werden?",
+    "mode": {
+      "merge": "Zusammenführen",
+      "replace": "Ersetzen"
+    },
+    "modeHint": {
+      "merge": "Vorhandene Daten bleiben erhalten. Bei gleicher ID gewinnt die importierte Fassung.",
+      "replace": "Alle vorhandenen Daten werden gelöscht und durch die Datei ersetzt."
+    },
+    "backupNote": "Vor dem Import wird automatisch eine Sicherung des aktuellen Stands angelegt.",
+    "confirmImport": "Import durchführen",
+    "imported": "Import erfolgreich abgeschlossen.",
+    "error": {
+      "invalid_json": "Die Datei ist kein gültiges JSON.",
+      "not_an_object": "Die Datei enthält keine Turnierdaten.",
+      "missing_version": "Der Datei fehlt eine Schema-Version. Stammt sie wirklich aus TournaCore?",
+      "future_version": "Die Datei wurde mit einer neueren Version geschrieben. Bitte aktualisiere TournaCore.",
+      "schema_mismatch": "Der Aufbau der Datei passt nicht. Es wurde nichts übernommen.",
+      "missing_migration": "Für diese Schema-Version gibt es keinen Migrationspfad."
+    }
   }
 }

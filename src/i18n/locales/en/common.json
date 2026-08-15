@@ -238,5 +238,39 @@
       "peak": "Peak",
       "record": "Record"
     }
+  },
+  "transfer": {
+    "exportTitle": "Export",
+    "exportHint": "Saves every tournament, team and result as a JSON file on your device. With no server, this is the only backup there is.",
+    "contains": "Contains {{tournaments}} tournaments, {{teams}} teams and {{matches}} matches.",
+    "export": "Export as JSON",
+    "importTitle": "Import",
+    "importHint": "Reads a previously exported file. It is validated in full before anything is applied.",
+    "chooseFile": "Choose a file",
+    "previewTitle": "Preview",
+    "previewTournaments": "{{count}} tournaments",
+    "previewTeams": "{{count}} teams",
+    "previewMatches": "{{count}} matches",
+    "migrated": "The file came from schema {{from}} and was lifted to {{to}}.",
+    "modeLegend": "How should it be imported?",
+    "mode": {
+      "merge": "Merge",
+      "replace": "Replace"
+    },
+    "modeHint": {
+      "merge": "Existing data is kept. On an id collision the imported version wins.",
+      "replace": "All existing data is deleted and replaced by the file."
+    },
+    "backupNote": "A snapshot of the current state is taken automatically before importing.",
+    "confirmImport": "Run import",
+    "imported": "Import completed successfully.",
+    "error": {
+      "invalid_json": "The file is not valid JSON.",
+      "not_an_object": "The file contains no tournament data.",
+      "missing_version": "The file has no schema version. Did it come from TournaCore?",
+      "future_version": "The file was written by a newer version. Please update TournaCore.",
+      "schema_mismatch": "The file structure does not match. Nothing was applied.",
+      "missing_migration": "There is no migration path for that schema version."
+    }
   }
 }

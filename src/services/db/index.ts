@@ -62,4 +62,5 @@ export const assetRepository = new DexieRepository<Asset, AssetId, never>(() => 
 
 export { db, setDatabase, SCHEMA_VERSION, TournaCoreDatabase } from './database';
 export { DexieRepository } from './dexieRepository';
+export { readMeta, writeMeta, PRE_IMPORT_BACKUP_KEY } from './meta';
 export type { Repository, IndexedRepository } from './repository';
