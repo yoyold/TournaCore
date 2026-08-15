@@ -1,8 +1,10 @@
-import { lazy } from 'react';
 import { createHashRouter, Navigate } from 'react-router-dom';
 
 import { AppShell } from '@layouts/AppShell';
 import { NotFoundPage } from '@pages/NotFoundPage';
+
+import { lazyRoute } from './lazyRoute';
+import { RouteError } from './RouteError';
 
 /**
  * Routing.
@@ -17,39 +19,43 @@ import { NotFoundPage } from '@pages/NotFoundPage';
  * initial chunk within the bundle budget enforced in CI.
  */
 
-const DashboardPage = lazy(() =>
+const DashboardPage = lazyRoute(() =>
   import('@pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
-const TournamentsPage = lazy(() =>
+const TournamentsPage = lazyRoute(() =>
   import('@pages/TournamentsPage').then((m) => ({ default: m.TournamentsPage })),
 );
-const TournamentWizardPage = lazy(() =>
+const TournamentWizardPage = lazyRoute(() =>
   import('@pages/TournamentWizardPage').then((m) => ({ default: m.TournamentWizardPage })),
 );
-const TournamentDetailPage = lazy(() =>
+const TournamentDetailPage = lazyRoute(() =>
   import('@pages/TournamentDetailPage').then((m) => ({ default: m.TournamentDetailPage })),
 );
-const TeamsPage = lazy(() => import('@pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
-const TeamDetailPage = lazy(() =>
+const TeamsPage = lazyRoute(() =>
+  import('@pages/TeamsPage').then((m) => ({ default: m.TeamsPage })),
+);
+const TeamDetailPage = lazyRoute(() =>
   import('@pages/TeamDetailPage').then((m) => ({ default: m.TeamDetailPage })),
 );
-const TeamFormPage = lazy(() =>
+const TeamFormPage = lazyRoute(() =>
   import('@pages/TeamFormPage').then((m) => ({ default: m.TeamFormPage })),
 );
-const GamesPage = lazy(() => import('@pages/GamesPage').then((m) => ({ default: m.GamesPage })));
-const StatisticsPage = lazy(() =>
+const GamesPage = lazyRoute(() =>
+  import('@pages/GamesPage').then((m) => ({ default: m.GamesPage })),
+);
+const StatisticsPage = lazyRoute(() =>
   import('@pages/StatisticsPage').then((m) => ({ default: m.StatisticsPage })),
 );
-const TransferPage = lazy(() =>
+const TransferPage = lazyRoute(() =>
   import('@pages/TransferPage').then((m) => ({ default: m.TransferPage })),
 );
-const SettingsPage = lazy(() =>
+const SettingsPage = lazyRoute(() =>
   import('@pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
-const ImprintPage = lazy(() =>
+const ImprintPage = lazyRoute(() =>
   import('@pages/legal/ImprintPage').then((m) => ({ default: m.ImprintPage })),
 );
-const PrivacyPage = lazy(() =>
+const PrivacyPage = lazyRoute(() =>
   import('@pages/legal/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
 );
 
@@ -57,7 +63,7 @@ export const router = createHashRouter([
   {
     path: '/',
     element: <AppShell />,
-    errorElement: <NotFoundPage />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <DashboardPage /> },
 

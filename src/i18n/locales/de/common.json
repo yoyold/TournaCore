@@ -272,5 +272,9 @@
       "schema_mismatch": "Der Aufbau der Datei passt nicht. Es wurde nichts übernommen.",
       "missing_migration": "Für diese Schema-Version gibt es keinen Migrationspfad."
     }
+  },
+  "routeError": {
+    "staleTitle": "Neue Version verfügbar",
+    "staleHint": "Diese Seite wurde aktualisiert, während der Tab offen war. Ein Neuladen holt die aktuelle Fassung."
   }
 }

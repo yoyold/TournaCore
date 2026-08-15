@@ -272,5 +272,9 @@
       "schema_mismatch": "The file structure does not match. Nothing was applied.",
       "missing_migration": "There is no migration path for that schema version."
     }
+  },
+  "routeError": {
+    "staleTitle": "A newer version is available",
+    "staleHint": "This site was updated while the tab was open. Reloading fetches the current version."
   }
 }

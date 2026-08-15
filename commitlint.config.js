@@ -7,6 +7,8 @@ export default {
       'always',
       [
         'setup',
+        // Application shell: bootstrap, routing, error handling.
+        'app',
         'domain',
         'models',
         'store',
