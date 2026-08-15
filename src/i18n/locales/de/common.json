@@ -219,5 +219,24 @@
       "description": "Beschreibung",
       "foundedAt": "Gegründet"
     }
+  },
+  "statistics": {
+    "tab": {
+      "overview": "Übersicht",
+      "elo": "Elo-Rangliste"
+    },
+    "matchesPlayed": "Gespielte Matches",
+    "eloEmpty": "Noch keine Elo-Wertung",
+    "eloEmptyHint": "Sobald Matches gespielt und Ergebnisse eingetragen sind, entsteht hier eine Rangliste.",
+    "eloExplainer": "Alle Teams starten bei {{start}}. Kampflose Siege zählen nicht. Ratings unter {{provisional}} Spielen sind vorläufig.",
+    "provisional": "vorläufig",
+    "provisionalHint": "Weniger als {{count}} gewertete Spiele",
+    "column": {
+      "team": "Team",
+      "rating": "Elo",
+      "change": "Letzte",
+      "peak": "Bestwert",
+      "record": "Bilanz"
+    }
   }
 }

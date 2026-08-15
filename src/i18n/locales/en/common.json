@@ -219,5 +219,24 @@
       "description": "Description",
       "foundedAt": "Founded"
     }
+  },
+  "statistics": {
+    "tab": {
+      "overview": "Overview",
+      "elo": "Elo ranking"
+    },
+    "matchesPlayed": "Matches played",
+    "eloEmpty": "No Elo ratings yet",
+    "eloEmptyHint": "A ranking appears once matches have been played and results recorded.",
+    "eloExplainer": "Every team starts at {{start}}. Walkovers do not count. Ratings below {{provisional}} matches are provisional.",
+    "provisional": "provisional",
+    "provisionalHint": "Fewer than {{count}} rated matches",
+    "column": {
+      "team": "Team",
+      "rating": "Elo",
+      "change": "Last",
+      "peak": "Peak",
+      "record": "Record"
+    }
   }
 }
