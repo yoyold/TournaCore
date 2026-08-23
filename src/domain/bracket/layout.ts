@@ -8,6 +8,10 @@ export interface BracketLayoutOptions {
   columnGap: number;
   /** Vertical gap between adjacent matches of the first round. */
   rowGap: number;
+  /** Vertical gap between the winner and loser bracket bands. */
+  bandGap: number;
+  /** Vertical space reserved above each band for its caption. */
+  bandLabelHeight: number;
   padding: number;
 }
 
@@ -16,6 +20,8 @@ export const DEFAULT_LAYOUT_OPTIONS: BracketLayoutOptions = {
   nodeHeight: 60,
   columnGap: 64,
   rowGap: 20,
+  bandGap: 56,
+  bandLabelHeight: 26,
   padding: 24,
 };
 
@@ -48,6 +54,19 @@ export interface BracketColumn {
   matchCount: number;
 }
 
+/**
+ * Caption marking where a bracket begins.
+ *
+ * Two stacked bands are unreadable without one: the drawing alone does not say
+ * which half is the loser bracket, and the difference decides what a match
+ * means.
+ */
+export interface BracketBand {
+  bracket: 'winner' | 'loser';
+  x: number;
+  y: number;
+}
+
 export interface BracketLayout {
   width: number;
   height: number;
@@ -55,6 +74,8 @@ export interface BracketLayout {
   nodeById: ReadonlyMap<MatchId, BracketNode>;
   connectors: BracketConnector[];
   columns: BracketColumn[];
+  /** Empty for a single bracket, which needs no caption to be understood. */
+  bands: BracketBand[];
 }
 
 /**
@@ -75,34 +96,77 @@ export function computeBracketLayout(
   options: Partial<BracketLayoutOptions> = {},
 ): BracketLayout {
   const opts = { ...DEFAULT_LAYOUT_OPTIONS, ...options };
-  const { nodeWidth, nodeHeight, columnGap, rowGap, padding } = opts;
+  const { nodeWidth, nodeHeight, columnGap, rowGap, bandGap, padding } = opts;
 
   const pitch = nodeHeight + rowGap;
   const positions = new Map<MatchId, { x: number; y: number }>();
   const nodes: BracketNode[] = [];
 
-  const mainMatches = structure.matches.filter((m) => m.position.bracket !== 'third_place');
+  const winnerMatches = structure.matches.filter(
+    (m) =>
+      m.position.bracket !== 'third_place' &&
+      m.position.bracket !== 'loser' &&
+      m.position.bracket !== 'grand_final',
+  );
+  const loserMatches = structure.matches.filter((m) => m.position.bracket === 'loser');
+  const finalMatches = structure.matches.filter((m) => m.position.bracket === 'grand_final');
   const extras = structure.matches.filter((m) => m.position.bracket === 'third_place');
 
-  // Rounds are laid out left to right; matches inside a round keep their order.
-  const rounds = [...new Set(mainMatches.map((m) => m.position.round))].sort((a, b) => a - b);
+  const band = (matches: readonly StructuralMatch[], top: number): number =>
+    layoutBand({ matches, top, opts, positions, nodes });
 
-  let maxY = padding;
+  // A single bracket is self-explanatory and gets no caption, which also keeps
+  // its geometry byte-for-byte what it was before double elimination existed.
+  const banded = loserMatches.length > 0;
+  const labelSpace = banded ? opts.bandLabelHeight : 0;
+  const bands: BracketBand[] = [];
 
-  for (const round of rounds) {
-    const inRound = mainMatches
-      .filter((m) => m.position.round === round)
-      .sort((a, b) => a.position.indexInRound - b.position.indexInRound);
+  if (banded) bands.push({ bracket: 'winner', x: padding, y: padding });
 
-    const x = padding + round * (nodeWidth + columnGap);
+  let maxY = band(winnerMatches, padding + labelSpace);
 
-    inRound.forEach((match, index) => {
-      const y =
-        round === 0
-          ? padding + index * pitch
-          : // Centre between the feeding matches. Falls back to even spacing
-            // when a match has no resolvable predecessors.
-            (centreBetweenFeeders(match, positions, nodeHeight) ?? padding + index * pitch);
+  /*
+   * The loser bracket is laid out as a second band underneath rather than woven
+   * into the same columns. Its rounds progress at half the winner bracket's
+   * pace and there are nearly twice as many of them, so interleaving would put
+   * unrelated matches in the same column and leave the reader guessing which
+   * bracket a node belongs to.
+   *
+   * Vertical centring inside a band deliberately ignores feeders from the other
+   * one: a loser match fed by a winner bracket casualty would otherwise be
+   * dragged up into the band above it.
+   */
+  if (loserMatches.length > 0) {
+    bands.push({ bracket: 'loser', x: padding, y: maxY + bandGap });
+    maxY = Math.max(maxY, band(loserMatches, maxY + bandGap + labelSpace));
+  }
+
+  /*
+   * The grand final belongs to neither band, so it goes in its own column to the
+   * right of both, level with the gap between them — which is also where the two
+   * paths into it converge.
+   */
+  if (finalMatches.length > 0) {
+    const lastColumn = [...winnerMatches, ...loserMatches].reduce(
+      (max, match) => Math.max(max, match.position.round),
+      0,
+    );
+
+    const sorted = [...finalMatches].sort((a, b) => a.position.round - b.position.round);
+    const first = sorted[0];
+    const finalY =
+      (first ? centreBetweenFeeders(first, positions, nodeHeight, () => true) : undefined) ??
+      padding;
+
+    for (const match of sorted) {
+      const x = padding + (lastColumn + 1 + match.position.round) * (nodeWidth + columnGap);
+      /*
+       * The bracket reset takes the next column at the same height. Centring it
+       * would put it exactly on top of the grand final, which feeds it, and both
+       * finalists carry over — so a plain step to the right reads as the
+       * continuation it is.
+       */
+      const y = finalY;
 
       positions.set(match.id, { x, y });
       nodes.push({
@@ -111,11 +175,11 @@ export function computeBracketLayout(
         y,
         width: nodeWidth,
         height: nodeHeight,
-        round,
-        bracket: match.position.bracket,
+        round: match.position.round,
+        bracket: 'grand_final',
       });
       maxY = Math.max(maxY, y + nodeHeight);
-    });
+    }
   }
 
   /*
@@ -153,12 +217,19 @@ export function computeBracketLayout(
 
   const maxX = nodes.reduce((max, node) => Math.max(max, node.x + node.width), padding);
 
-  const columns: BracketColumn[] = rounds.map((round) => ({
-    round,
-    x: padding + round * (nodeWidth + columnGap),
-    bracket: 'winner',
-    matchCount: mainMatches.filter((m) => m.position.round === round).length,
-  }));
+  const columns: BracketColumn[] = nodes
+    .filter((node) => node.bracket !== 'third_place')
+    .reduce<BracketColumn[]>((acc, node) => {
+      const existing = acc.find(
+        (column) => column.round === node.round && column.bracket === node.bracket,
+      );
+      if (existing) {
+        existing.matchCount += 1;
+        return acc;
+      }
+      acc.push({ round: node.round, x: node.x, bracket: node.bracket, matchCount: 1 });
+      return acc;
+    }, []);
 
   return {
     width: maxX + padding,
@@ -167,17 +238,73 @@ export function computeBracketLayout(
     nodeById,
     connectors,
     columns,
+    bands,
   };
+}
+
+/**
+ * Places one horizontal band of a bracket: rounds left to right, each match
+ * centred between the two feeding it.
+ *
+ * `top` is where the band begins vertically, which is what allows a second one
+ * to be stacked below the first without either knowing about the other.
+ */
+function layoutBand(input: {
+  matches: readonly StructuralMatch[];
+  top: number;
+  opts: BracketLayoutOptions;
+  positions: Map<MatchId, { x: number; y: number }>;
+  nodes: BracketNode[];
+}): number {
+  const { matches, top, opts, positions, nodes } = input;
+  const { nodeWidth, nodeHeight, columnGap, rowGap, padding } = opts;
+
+  const pitch = nodeHeight + rowGap;
+  const inBand = new Set(matches.map((match) => match.id));
+  const rounds = [...new Set(matches.map((m) => m.position.round))].sort((a, b) => a - b);
+
+  let maxY = top;
+
+  for (const round of rounds) {
+    const inRound = matches
+      .filter((m) => m.position.round === round)
+      .sort((a, b) => a.position.indexInRound - b.position.indexInRound);
+
+    const x = padding + round * (nodeWidth + columnGap);
+
+    inRound.forEach((match, index) => {
+      const centred = centreBetweenFeeders(match, positions, nodeHeight, (id) => inBand.has(id));
+      // Falls back to even spacing when a match has no predecessors inside this
+      // band — the first round of either bracket, and every drop-in round whose
+      // only feeder sits in the band above.
+      const y = round === 0 ? top + index * pitch : (centred ?? top + index * pitch);
+
+      positions.set(match.id, { x, y });
+      nodes.push({
+        matchId: match.id,
+        x,
+        y,
+        width: nodeWidth,
+        height: nodeHeight,
+        round,
+        bracket: match.position.bracket,
+      });
+      maxY = Math.max(maxY, y + nodeHeight);
+    });
+  }
+
+  return maxY;
 }
 
 function centreBetweenFeeders(
   match: StructuralMatch,
   positions: ReadonlyMap<MatchId, { x: number; y: number }>,
   nodeHeight: number,
+  accept: (matchId: MatchId) => boolean,
 ): number | undefined {
   const feeders = [match.slotA, match.slotB]
     .map((slot) => feederId(slot))
-    .filter((id): id is MatchId => id !== undefined)
+    .filter((id): id is MatchId => id !== undefined && accept(id))
     .map((id) => positions.get(id))
     .filter((position): position is { x: number; y: number } => position !== undefined);
 

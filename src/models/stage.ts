@@ -87,9 +87,26 @@ export interface SwissConfig {
   rounds: number;
   pairing: 'dutch' | 'random_within_score_group';
   avoidRematches: boolean;
+  pointSystem: PointSystem;
   tiebreakers: Tiebreaker[];
   matchFormat: MatchFormat;
 }
+
+/**
+ * Default tie-breaking for Swiss.
+ *
+ * Strength of schedule comes first here, unlike in a league: two participants on
+ * the same score have faced entirely different opponents, and which of those
+ * fields was harder is the most informative thing left to compare.
+ */
+export const DEFAULT_SWISS_TIEBREAKERS: readonly Tiebreaker[] = [
+  'points',
+  'buchholz',
+  'median_buchholz',
+  'head_to_head',
+  'map_difference',
+  'seed',
+];
 
 export type FormatConfig =
   | SingleEliminationConfig

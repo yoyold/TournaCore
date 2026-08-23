@@ -5,23 +5,33 @@ import { InvariantError } from '@utils/invariant';
 import { availableFormats, findFormat, requireFormat } from './registry';
 import { singleEliminationFormat } from './singleElimination';
 
+import type { FormatKind } from '@models/index';
+
 describe('format registry', () => {
   it('resolves a registered format', () => {
     expect(findFormat('single_elimination')).toBe(singleEliminationFormat);
   });
 
-  it('returns undefined for a format that is not implemented yet', () => {
-    expect(findFormat('swiss')).toBeUndefined();
+  it('returns undefined for a format it does not know', () => {
+    expect(findFormat('pyramid' as FormatKind)).toBeUndefined();
   });
 
-  it('lists the implemented formats', () => {
-    expect(availableFormats()).toContain('single_elimination');
+  it('lists every implemented format', () => {
+    // Each of these is a format an organiser can actually pick; the wizard reads
+    // this list rather than keeping its own.
+    expect(availableFormats().sort()).toEqual([
+      'double_elimination',
+      'group_stage',
+      'round_robin',
+      'single_elimination',
+      'swiss',
+    ]);
   });
 
   it('throws when a required format is missing', () => {
     // A stored stage referencing an unknown format means corrupt data or a
     // downgrade. Failing loudly beats rendering an empty bracket.
-    expect(() => requireFormat('double_elimination')).toThrow(InvariantError);
+    expect(() => requireFormat('pyramid' as FormatKind)).toThrow(InvariantError);
   });
 
   it('returns the handler when the required format exists', () => {

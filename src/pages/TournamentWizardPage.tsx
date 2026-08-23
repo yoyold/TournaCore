@@ -10,6 +10,7 @@ import { Card, CardBody } from '@components/ui/Card';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { PageHeader } from '@components/ui/PageHeader';
 import { deriveTournamentState, type DerivedStage } from '@domain/derive';
+import { isBracketFormat } from '@domain/formats/registry';
 import {
   assembleTournament,
   type BestOf,
@@ -26,7 +27,8 @@ import type { TFunction } from 'i18next';
 const BEST_OF_OPTIONS: BestOf[] = [1, 3, 5, 7];
 const STEP_COUNT = 4;
 
-type FormatKind = 'single_elimination' | 'round_robin' | 'group_stage';
+type FormatKind =
+  'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin' | 'group_stage';
 
 interface DraftState {
   name: string;
@@ -44,6 +46,10 @@ interface DraftState {
   groupCount: number;
   /** Places per group that advance. Zero means the groups are the whole event. */
   advancePerGroup: number;
+  /** Double elimination: whether the grand final can go to a second match. */
+  grandFinal: 'single' | 'bracket_reset';
+  /** Swiss: how many rounds are played. */
+  swissRounds: number;
 }
 
 const INITIAL: DraftState = {
@@ -60,6 +66,8 @@ const INITIAL: DraftState = {
   legs: 1,
   groupCount: 4,
   advancePerGroup: 2,
+  grandFinal: 'bracket_reset',
+  swissRounds: 5,
 };
 
 /**
@@ -173,7 +181,9 @@ export function TournamentWizardPage() {
             participants={participants}
           />
         )}
-        {step === 2 && <FormatStep draft={draft} set={set} />}
+        {step === 2 && (
+          <FormatStep draft={draft} set={set} participantCount={participants.length} />
+        )}
         {step === 3 && previewStage && (
           <PreviewStep
             stage={previewStage}
@@ -272,6 +282,10 @@ function Stepper({ current }: { current: number }) {
 interface StepProps {
   draft: DraftState;
   set: <K extends keyof DraftState>(key: K, value: DraftState[K]) => void;
+}
+
+interface FormatStepProps extends StepProps {
+  participantCount: number;
 }
 
 function BasicsStep({ draft, set }: StepProps) {
@@ -396,9 +410,18 @@ function ParticipantsStep({
   );
 }
 
-function FormatStep({ draft, set }: StepProps) {
+function FormatStep({ draft, set, participantCount }: FormatStepProps) {
   const { t } = useTranslation();
-  const kinds: FormatKind[] = ['single_elimination', 'round_robin', 'group_stage'];
+  const kinds: FormatKind[] = [
+    'single_elimination',
+    'double_elimination',
+    'swiss',
+    'round_robin',
+    'group_stage',
+  ];
+  // Below this a Swiss field cannot separate: more participants can still be
+  // unbeaten than there are places at the top.
+  const recommendedRounds = Math.max(1, Math.ceil(Math.log2(Math.max(participantCount, 2))));
 
   return (
     <Card>
@@ -464,7 +487,46 @@ function FormatStep({ draft, set }: StepProps) {
           </div>
         )}
 
-        {draft.formatKind !== 'single_elimination' && (
+        {draft.formatKind === 'swiss' && (
+          <Field
+            label={t('wizard.field.swissRounds')}
+            hint={t('wizard.swissRoundsHint', { rounds: recommendedRounds })}
+          >
+            <input
+              type="number"
+              min={1}
+              max={32}
+              value={draft.swissRounds}
+              onChange={(e) => {
+                set('swissRounds', Math.max(1, Number(e.target.value) || 1));
+              }}
+              className={inputClass}
+            />
+          </Field>
+        )}
+
+        {draft.formatKind === 'double_elimination' && (
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={draft.grandFinal === 'bracket_reset'}
+              onChange={(e) => {
+                set('grandFinal', e.target.checked ? 'bracket_reset' : 'single');
+              }}
+              className="mt-0.5 h-4 w-4 accent-[var(--tc-accent)]"
+            />
+            <span>
+              <span className="block text-sm font-medium text-fg">
+                {t('wizard.field.bracketReset')}
+              </span>
+              <span className="block text-xs text-fg-secondary">
+                {t('wizard.bracketResetHint')}
+              </span>
+            </span>
+          </label>
+        )}
+
+        {(draft.formatKind === 'round_robin' || draft.formatKind === 'group_stage') && (
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-sm font-medium text-fg">{t('wizard.field.legs')}</legend>
             <div className="flex gap-2">
@@ -505,6 +567,7 @@ function FormatStep({ draft, set }: StepProps) {
             />
           </Field>
           {(draft.formatKind === 'single_elimination' ||
+            draft.formatKind === 'double_elimination' ||
             (draft.formatKind === 'group_stage' && draft.advancePerGroup > 0)) && (
             <Field label={t('wizard.field.finalBestOf')}>
               <BestOfSelect
@@ -545,6 +608,14 @@ function summariseFormat(draft: DraftState, stageCount: number, t: TFunction): s
   if (draft.formatKind === 'round_robin') {
     return t(`wizard.legs.${String(draft.legs)}`);
   }
+  if (draft.formatKind === 'swiss') {
+    return t('wizard.previewSwiss', { rounds: draft.swissRounds });
+  }
+  if (draft.formatKind === 'double_elimination') {
+    return draft.grandFinal === 'bracket_reset'
+      ? t('wizard.field.bracketReset')
+      : t('wizard.previewSingleGrandFinal');
+  }
   if (draft.formatKind === 'group_stage') {
     return draft.advancePerGroup > 0
       ? t('wizard.previewGroupsWithPlayoffs', {
@@ -562,6 +633,17 @@ function toFormatChoice(draft: DraftState): FormatChoice {
   switch (draft.formatKind) {
     case 'round_robin':
       return { kind: 'round_robin', legs: draft.legs, defaultBestOf: draft.defaultBestOf };
+
+    case 'double_elimination':
+      return {
+        kind: 'double_elimination',
+        grandFinal: draft.grandFinal,
+        defaultBestOf: draft.defaultBestOf,
+        finalBestOf: draft.finalBestOf,
+      };
+
+    case 'swiss':
+      return { kind: 'swiss', rounds: draft.swissRounds, defaultBestOf: draft.defaultBestOf };
 
     case 'group_stage':
       return {
@@ -612,7 +694,7 @@ function PreviewStep({
         The preview uses the same components the live tournament does, so a
         league previews as a fixture list rather than as an empty bracket.
       */}
-      {stage.stage.format.kind === 'single_elimination' ? (
+      {isBracketFormat(stage.stage.format.kind) ? (
         <BracketCanvas
           structure={stage.structure}
           matches={stage.resolved.matches}
@@ -656,20 +738,32 @@ function BestOfSelect({ value, onChange }: { value: BestOf; onChange: (value: Be
 function Field({
   label,
   required = false,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: string | undefined;
   children: React.ReactNode;
 }) {
+  /*
+   * The hint sits outside the label deliberately. Nested inside it, it becomes
+   * part of the control's accessible name: the field announces itself as
+   * "Rounds at least five rounds are recommended for this field" rather than
+   * "Rounds". Outside, it stays adjacent in the reading order without swallowing
+   * the name.
+   */
   return (
-    <label className="grid gap-1.5">
-      <span className="text-sm font-medium text-fg">
-        {label}
-        {required && <span className="text-danger"> *</span>}
-      </span>
-      {children}
-    </label>
+    <div className="grid gap-1.5">
+      <label className="grid gap-1.5">
+        <span className="text-sm font-medium text-fg">
+          {label}
+          {required && <span className="text-danger"> *</span>}
+        </span>
+        {children}
+      </label>
+      {hint !== undefined && <span className="text-xs text-fg-secondary">{hint}</span>}
+    </div>
   );
 }
 

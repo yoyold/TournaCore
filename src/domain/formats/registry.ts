@@ -1,8 +1,10 @@
 import { InvariantError } from '@utils/invariant';
 
+import { doubleEliminationFormat } from './doubleElimination';
 import { groupStageFormat } from './groupStage';
 import { roundRobinFormat } from './roundRobin';
 import { singleEliminationFormat } from './singleElimination';
+import { swissFormat } from './swiss';
 
 import type { TournamentFormat } from './types';
 import type { FormatConfig, FormatKind } from '@models/index';
@@ -22,8 +24,10 @@ function register<TConfig extends FormatConfig>(format: TournamentFormat<TConfig
 }
 
 register(singleEliminationFormat);
+register(doubleEliminationFormat);
 register(roundRobinFormat);
 register(groupStageFormat);
+register(swissFormat);
 
 /** Returns the format handler, or undefined when the kind is not implemented yet. */
 export function findFormat(kind: FormatKind): TournamentFormat<never> | undefined {
@@ -46,4 +50,16 @@ export function requireFormat(kind: FormatKind): TournamentFormat<never> {
 /** Format kinds that are currently implemented. */
 export function availableFormats(): FormatKind[] {
   return [...registry.keys()];
+}
+
+/**
+ * Whether a format is drawn as a bracket rather than as a table of fixtures.
+ *
+ * A presentation question, but one that has to be answered identically by the
+ * tournament page and by the wizard preview — a preview that shows a fixture
+ * list for something the live page draws as a bracket would be worse than no
+ * preview at all.
+ */
+export function isBracketFormat(kind: FormatKind): boolean {
+  return kind === 'single_elimination' || kind === 'double_elimination';
 }

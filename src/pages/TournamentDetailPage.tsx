@@ -11,6 +11,7 @@ import { Button } from '@components/ui/Button';
 import { Card, CardBody } from '@components/ui/Card';
 import { ConfirmDialog } from '@components/ui/ConfirmDialog';
 import { PageHeader } from '@components/ui/PageHeader';
+import { isBracketFormat } from '@domain/formats/registry';
 import { useDerivedTournament } from '@hooks/useDerivedTournament';
 import { asId, type Match, type MatchId, type TournamentId } from '@models/index';
 import { useDataStore } from '@store/slices/dataSlice';
@@ -174,7 +175,7 @@ export function TournamentDetailPage() {
               a league: nothing advances, so there is no tree to draw. Leagues and
               groups get their table plus the fixture list instead.
             */}
-            {stage.stage.format.kind === 'single_elimination' ? (
+            {isBracketFormat(stage.stage.format.kind) ? (
               <BracketCanvas
                 structure={stage.structure}
                 matches={stage.resolved.matches}

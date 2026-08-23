@@ -56,6 +56,12 @@ function resolve(
     structure,
     results,
     seededSlots: seed(participants),
+    config: {
+      kind: 'single_elimination',
+      thirdPlaceMatch: false,
+      byePlacement: 'seeded',
+      matchFormats: { default: { kind: 'bo', games: 1 } },
+    },
   });
 }
 

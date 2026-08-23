@@ -128,7 +128,12 @@ describe('groupStageFormat standings', () => {
     const cfg = config();
     const structure = generateGroupStage({ stageId: STAGE, config: cfg, slotCount });
     const seededSlots = seed(slotCount);
-    const resolved = groupStageFormat.resolveSlots({ structure, results, seededSlots });
+    const resolved = groupStageFormat.resolveSlots({
+      structure,
+      results,
+      seededSlots,
+      config: cfg,
+    });
     const input = { structure: resolved, config: cfg, seededSlots, storedMatches: new Map() };
 
     return {

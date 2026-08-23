@@ -125,7 +125,11 @@
       "cancelled": "Cancelled"
     },
     "versus": "versus",
-    "thirdPlace": "Third place match:"
+    "thirdPlace": "Third place match:",
+    "band": {
+      "winner": "Winner bracket",
+      "loser": "Loser bracket"
+    }
   },
   "tournaments": {
     "createDemo": "Create demo tournament",
@@ -190,18 +194,24 @@
       "thirdPlace": "Third place match",
       "groupCount": "Number of groups",
       "advancePerGroup": "Advancing per group (0 = no playoffs)",
-      "legs": "Schedule"
+      "legs": "Schedule",
+      "bracketReset": "Bracket reset in the grand final",
+      "swissRounds": "Rounds"
     },
     "formatLegend": "Tournament format",
     "format": {
       "single_elimination": "Single elimination",
       "round_robin": "League / round robin",
-      "group_stage": "Group stage"
+      "group_stage": "Group stage",
+      "double_elimination": "Double elimination",
+      "swiss": "Swiss system"
     },
     "formatHintFor": {
       "single_elimination": "Knockout. One loss and you are out; uneven fields get automatic byes.",
       "round_robin": "Everyone plays everyone, ranked by a table. No knockout — the table decides.",
-      "group_stage": "Several groups play round robins in parallel. The top places can carry over into a knockout."
+      "group_stage": "Several groups play round robins in parallel. The top places can carry over into a knockout.",
+      "double_elimination": "Two lives: one defeat drops you into the loser bracket.",
+      "swiss": "A fixed number of rounds, equal scores meet. Nobody is knocked out."
     },
     "legs": {
       "1": "Single round",
@@ -209,7 +219,11 @@
     },
     "previewDetail": "Shape",
     "previewGroupsOnly": "{{groups}} groups, no knockout",
-    "previewGroupsWithPlayoffs": "{{groups}} groups, top {{advance}} of each reach the playoffs"
+    "previewGroupsWithPlayoffs": "{{groups}} groups, top {{advance}} of each reach the playoffs",
+    "bracketResetHint": "The loser bracket winner has to win twice.",
+    "swissRoundsHint": "At least {{rounds}} rounds are recommended for this field.",
+    "previewSwiss": "{{rounds}} rounds",
+    "previewSingleGrandFinal": "A single grand final"
   },
   "teams": {
     "create": "Add team",

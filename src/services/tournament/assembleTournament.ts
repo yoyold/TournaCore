@@ -1,6 +1,7 @@
 import { roundCount } from '@domain/bracket/bracketMath';
 import {
   DEFAULT_POINT_SYSTEM,
+  DEFAULT_SWISS_TIEBREAKERS,
   DEFAULT_TIEBREAKERS,
   newGameId,
   newParticipantId,
@@ -40,6 +41,18 @@ export type FormatChoice =
       thirdPlaceMatch: boolean;
       defaultBestOf: BestOf;
       finalBestOf: BestOf;
+    }
+  | {
+      kind: 'double_elimination';
+      /** Whether the loser bracket winner has to beat the winner bracket twice. */
+      grandFinal: 'single' | 'bracket_reset';
+      defaultBestOf: BestOf;
+      finalBestOf: BestOf;
+    }
+  | {
+      kind: 'swiss';
+      rounds: number;
+      defaultBestOf: BestOf;
     }
   | {
       kind: 'round_robin';
@@ -187,6 +200,36 @@ function buildStages(
         },
       ];
 
+    case 'double_elimination':
+      return [
+        {
+          ...base,
+          id: firstStageId,
+          name: 'Main Bracket',
+          format: doubleElimination(choice, participantCount),
+        },
+      ];
+
+    case 'swiss':
+      return [
+        {
+          ...base,
+          id: firstStageId,
+          name: 'Swiss',
+          format: {
+            kind: 'swiss',
+            rounds: choice.rounds,
+            pairing: 'dutch',
+            // Meeting the same opponent twice wastes a round that could have
+            // separated the field instead.
+            avoidRematches: true,
+            pointSystem: DEFAULT_POINT_SYSTEM,
+            tiebreakers: [...DEFAULT_SWISS_TIEBREAKERS],
+            matchFormat: bestOf(choice.defaultBestOf),
+          },
+        },
+      ];
+
     case 'round_robin':
       return [
         {
@@ -277,6 +320,26 @@ function singleElimination(
     matchFormats: {
       default: bestOf(choice.defaultBestOf),
       // The final gets its own length; the third place match shares that round.
+      ...(rounds >= 1 ? { byRound: { [rounds - 1]: bestOf(choice.finalBestOf) } } : {}),
+    },
+  };
+}
+
+function doubleElimination(
+  choice: Extract<FormatChoice, { kind: 'double_elimination' }>,
+  participantCount: number,
+): FormatConfig {
+  const rounds = roundCount(participantCount);
+
+  return {
+    kind: 'double_elimination',
+    grandFinal: choice.grandFinal,
+    // The drop order that keeps a beaten opponent out of the way; the naive
+    // alternative exists only so an imported bracket can be reproduced exactly.
+    loserBracketSeeding: 'reversed',
+    matchFormats: {
+      default: bestOf(choice.defaultBestOf),
+      // Applies to the winner bracket final and, through it, the grand final.
       ...(rounds >= 1 ? { byRound: { [rounds - 1]: bestOf(choice.finalBestOf) } } : {}),
     },
   };

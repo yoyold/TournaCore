@@ -127,12 +127,20 @@ export function invalid(code: string, message: string): ValidationResult {
 // The format contract
 // ---------------------------------------------------------------------------
 
-export interface ResolveInput {
+export interface ResolveInput<TConfig extends FormatConfig = FormatConfig> {
   structure: GeneratedStructure;
   /** Recorded outcomes, keyed by match. Absent means the match is still open. */
   results: ReadonlyMap<MatchId, MatchOutcome>;
   /** Entry slots filled by seeding rules, keyed by 1-based slot index. */
   seededSlots: ReadonlyMap<number, ParticipantId>;
+  /**
+   * The stage's configuration.
+   *
+   * Bracket formats fix their pairings when the structure is generated and never
+   * read this. An adaptive format cannot: Swiss decides round n from the results
+   * of round n-1, so its pairing rules have to be available at resolution time.
+   */
+  config: TConfig;
 }
 
 export interface StandingsInput<TConfig extends FormatConfig> {
@@ -166,7 +174,7 @@ export interface TournamentFormat<TConfig extends FormatConfig = FormatConfig> {
   }): GeneratedStructure;
 
   /** Resolves structural references against known results. */
-  resolveSlots(input: ResolveInput): ResolvedStructure;
+  resolveSlots(input: ResolveInput<TConfig>): ResolvedStructure;
 
   /** Ranking as of the current state. */
   computeStandings(input: StandingsInput<TConfig>): Standing[];

@@ -95,7 +95,12 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
       slotCount,
     });
 
-    const resolved = format.resolveSlots({ structure, results: outcomes, seededSlots });
+    const resolved = format.resolveSlots({
+      structure,
+      results: outcomes,
+      seededSlots,
+      config: stage.format as never,
+    });
 
     const standingsInput = {
       structure: resolved,

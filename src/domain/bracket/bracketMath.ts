@@ -54,6 +54,42 @@ export function singleEliminationMatchCount(
   return needsThirdPlace ? base + 1 : base;
 }
 
+/**
+ * Number of rounds in the loser bracket of a double elimination tournament.
+ *
+ * The loser bracket alternates between two kinds of round: one where the players
+ * knocked out of the winner bracket drop in, and one where the survivors of that
+ * play each other off. That alternation is why it takes roughly twice as many
+ * rounds as the winner bracket to reduce the same field to one.
+ *
+ * Two participants are the degenerate case: there is nothing to lose into, and
+ * the second chance is the grand final itself.
+ */
+export function loserBracketRoundCount(participantCount: number): number {
+  assertNonNegativeInteger(participantCount, 'loserBracketRoundCount');
+  const winnerRounds = roundCount(participantCount);
+  return winnerRounds < 2 ? 0 : 2 * winnerRounds - 2;
+}
+
+/**
+ * Total number of matches in a double elimination tournament.
+ *
+ * Every participant but the champion has to lose twice, and each match produces
+ * exactly one loss — hence 2n-2, plus the bracket reset when it is configured.
+ * Bye matches are never created, so the count is independent of how far the
+ * field sits from a power of two.
+ */
+export function doubleEliminationMatchCount(
+  participantCount: number,
+  options: { bracketReset?: boolean } = {},
+): number {
+  assertNonNegativeInteger(participantCount, 'doubleEliminationMatchCount');
+  if (participantCount < 2) return 0;
+
+  const base = 2 * participantCount - 2;
+  return options.bracketReset === true ? base + 1 : base;
+}
+
 /** Match count per round, index 0 being the first round. */
 export function matchesPerRound(participantCount: number): number[] {
   const rounds = roundCount(participantCount);

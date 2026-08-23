@@ -11,6 +11,16 @@ export interface StandingsInput {
   tiebreakers: readonly Tiebreaker[];
   /** Entry seed per participant, used as the final tie-breaker. */
   seedOf: (participantId: ParticipantId) => number;
+  /**
+   * Byes to score as wins, per participant.
+   *
+   * Formats disagree about this, so it is the caller's decision. A round robin
+   * fixture that lost its opponent is worth nothing — points against nobody are
+   * not points. A Swiss bye is the opposite: the field is odd, somebody has to
+   * sit out through no fault of their own, and withholding the point would
+   * penalise them for the draw.
+   */
+  byes?: ReadonlyMap<ParticipantId, number> | undefined;
 }
 
 interface Row {
@@ -25,6 +35,10 @@ interface Row {
   roundsWon: number;
   roundsLost: number;
   seed: number;
+  /** Sum of the opponents' scores; only meaningful where fields differ. */
+  buchholz: number;
+  medianBuchholz: number;
+  opponents: ParticipantId[];
 }
 
 /**
@@ -39,7 +53,7 @@ interface Row {
  * most.
  */
 export function computeStandings(input: StandingsInput): Standing[] {
-  const { participants, matches, storedMatches, pointSystem, tiebreakers, seedOf } = input;
+  const { participants, matches, storedMatches, pointSystem, tiebreakers, seedOf, byes } = input;
 
   const rows = new Map<ParticipantId, Row>();
   for (const participantId of participants) {
@@ -54,6 +68,9 @@ export function computeStandings(input: StandingsInput): Standing[] {
       roundsWon: 0,
       roundsLost: 0,
       seed: seedOf(participantId),
+      buchholz: 0,
+      medianBuchholz: 0,
+      opponents: [],
     });
   }
 
@@ -71,6 +88,9 @@ export function computeStandings(input: StandingsInput): Standing[] {
         roundsWon: 0,
         roundsLost: 0,
         seed: seedOf(participantId),
+        buchholz: 0,
+        medianBuchholz: 0,
+        opponents: [],
       };
       rows.set(participantId, row);
     }
@@ -89,6 +109,9 @@ export function computeStandings(input: StandingsInput): Standing[] {
 
     const rowA = ensure(a);
     const rowB = ensure(b);
+
+    rowA.opponents.push(b);
+    rowB.opponents.push(a);
 
     const stored = storedMatches.get(match.id);
     const maps = mapTally(stored);
@@ -125,6 +148,20 @@ export function computeStandings(input: StandingsInput): Standing[] {
 
     bumpHeadToHead(headToHead, winner.participantId, loser.participantId);
   }
+
+  /*
+   * Byes are scored before the opponent sums are taken, so a bye counts towards
+   * the score other participants are measured against — otherwise facing someone
+   * who sat out a round would silently look like facing a weaker opponent.
+   */
+  for (const [participantId, count] of byes ?? []) {
+    if (count < 1) continue;
+    const row = ensure(participantId);
+    row.wins += count;
+    row.points += pointSystem.win * count;
+  }
+
+  applyOpponentScores(rows);
 
   const ordered = [...rows.values()].sort((a, b) => compare(a, b, tiebreakers, headToHead));
 
@@ -185,11 +222,14 @@ function applyTiebreaker(
       return a.seed - b.seed;
 
     case 'buchholz':
+      // Strength of schedule. Decisive in Swiss, where two participants on the
+      // same score have faced different fields; inert in a round robin, where
+      // everyone faces everyone and the sums only differ by a participant's own
+      // result against themselves.
+      return b.buchholz - a.buchholz;
+
     case 'median_buchholz':
-      // Swiss-specific; not applicable to a round robin where everyone plays
-      // everyone. Treated as no-op rather than throwing, so a shared default
-      // chain can list them.
-      return 0;
+      return b.medianBuchholz - a.medianBuchholz;
 
     case 'manual':
       // Reserved for an administrator override; nothing to compare yet.
@@ -256,6 +296,27 @@ function decidingTiebreaker(
     if (applyTiebreaker(tiebreaker, a, b, headToHead) !== 0) return tiebreaker;
   }
   return undefined;
+}
+
+/**
+ * Sums each participant's opponents' scores.
+ *
+ * The median variant drops the strongest and weakest opponent first, which stops
+ * one freak pairing — someone who withdrew, or the eventual winner — from
+ * dominating the comparison.
+ */
+function applyOpponentScores(rows: Map<ParticipantId, Row>): void {
+  for (const row of rows.values()) {
+    const scores = row.opponents
+      .map((opponentId) => rows.get(opponentId)?.points ?? 0)
+      .sort((a, b) => a - b);
+
+    row.buchholz = scores.reduce((sum, value) => sum + value, 0);
+    row.medianBuchholz =
+      scores.length >= 3
+        ? scores.slice(1, -1).reduce((sum, value) => sum + value, 0)
+        : row.buchholz;
+  }
 }
 
 function slotParticipant(match: ResolvedMatch, side: 'A' | 'B'): ParticipantId | undefined {

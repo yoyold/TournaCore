@@ -192,6 +192,21 @@ export function BracketCanvas({
               })}
             </svg>
 
+            {/*
+              Two stacked brackets need saying which is which: the drawing alone
+              does not distinguish them, and whether a defeat ends a run depends
+              entirely on the answer.
+            */}
+            {layout.bands.map((bandLabel) => (
+              <div
+                key={bandLabel.bracket}
+                className="absolute text-xs font-semibold tracking-wide text-fg-secondary uppercase"
+                style={{ left: bandLabel.x, top: bandLabel.y }}
+              >
+                {t(`bracket.band.${bandLabel.bracket}`)}
+              </div>
+            ))}
+
             {layout.nodes.map((node) => {
               const match = byId.get(node.matchId);
               if (!match) return null;

@@ -117,3 +117,88 @@ test('records a league result and updates the table', async ({ page }) => {
   // The table now shows a winner on three points, derived from that one result.
   await expect(table.locator('tbody tr').first()).toContainText('3');
 });
+
+test('creates a double elimination bracket with both brackets drawn', async ({ page }) => {
+  await startWizard(page, 'Double Cup');
+
+  await page.getByRole('radio', { name: /Doppel-K\.-o\./ }).check();
+  await finish(page, 'Double Cup');
+
+  const bracket = page.getByRole('group', { name: /Turnierbaum/i });
+  await expect(bracket).toBeVisible();
+
+  // Two stacked brackets are only readable if they say which is which.
+  await expect(page.getByText('Winner Bracket')).toBeVisible();
+  await expect(page.getByText('Loser Bracket')).toBeVisible();
+});
+
+test('a defeat in double elimination is not the end', async ({ page }) => {
+  await startWizard(page, 'Second Chance');
+
+  await page.getByRole('radio', { name: /Doppel-K\.-o\./ }).check();
+  await finish(page, 'Second Chance');
+
+  // Beat Nova Collective in its opening match.
+  await page
+    .getByRole('button', { name: /Nova Collective/ })
+    .first()
+    .click();
+  const scores = page.getByRole('spinbutton');
+  await scores.nth(0).fill('7');
+  await scores.nth(1).fill('13');
+  await page.getByRole('button', { name: 'Map hinzufügen' }).click();
+  await page.getByRole('spinbutton').nth(2).fill('9');
+  await page.getByRole('spinbutton').nth(3).fill('13');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('dialog', { name: 'Ergebnis eintragen' })).toHaveCount(0);
+
+  // It reappears in the loser bracket rather than disappearing from the draw.
+  await expect(page.getByRole('button', { name: /Nova Collective/ })).toHaveCount(2);
+});
+
+test('a swiss stage draws only the round that can be drawn', async ({ page }) => {
+  await startWizard(page, 'Swiss Cup');
+
+  await page.getByRole('radio', { name: /Schweizer System/ }).check();
+  await finish(page, 'Swiss Cup');
+
+  // A table, not a bracket: nobody is knocked out.
+  await expect(page.getByRole('group', { name: /Turnierbaum/i })).toHaveCount(0);
+  await expect(page.getByRole('table')).toBeVisible();
+
+  await expect(page.getByText('Runde 1')).toBeVisible();
+  await expect(page.getByText('Runde 5')).toBeVisible();
+
+  /*
+   * Round one is drawn from the seeding. Everything after it depends on results
+   * that do not exist yet and must stay visibly undrawn — five rounds of eight
+   * participants leaves sixteen fixtures waiting.
+   */
+  await expect(page.getByRole('button', { name: 'Offen gegen Offen' })).toHaveCount(16);
+});
+
+test('finishing a swiss round draws the next one', async ({ page }) => {
+  await startWizard(page, 'Swiss Progress', 'Alpha, DE\nBeta, US\nGamma, SE\nDelta, KR');
+
+  await page.getByRole('radio', { name: /Schweizer System/ }).check();
+  await page.getByRole('spinbutton', { name: 'Runden' }).fill('2');
+  await finish(page, 'Swiss Progress');
+
+  await expect(page.getByRole('button', { name: 'Offen gegen Offen' })).toHaveCount(2);
+
+  // Play both fixtures of round one.
+  for (let i = 0; i < 2; i += 1) {
+    await page.getByRole('button', { name: /gegen/ }).nth(i).click();
+    const scores = page.getByRole('spinbutton');
+    await scores.nth(0).fill('13');
+    await scores.nth(1).fill('7');
+    await page.getByRole('button', { name: 'Map hinzufügen' }).click();
+    await page.getByRole('spinbutton').nth(2).fill('13');
+    await page.getByRole('spinbutton').nth(3).fill('9');
+    await page.getByRole('button', { name: 'Speichern' }).click();
+    await expect(page.getByRole('dialog', { name: 'Ergebnis eintragen' })).toHaveCount(0);
+  }
+
+  // Round two now has opponents.
+  await expect(page.getByRole('button', { name: 'Offen gegen Offen' })).toHaveCount(0);
+});

@@ -153,7 +153,12 @@ describe('roundRobinFormat.computeStandings', () => {
     });
 
     const seededSlots = seed(slots);
-    const resolved = roundRobinFormat.resolveSlots({ structure, results, seededSlots });
+    const resolved = roundRobinFormat.resolveSlots({
+      structure,
+      results,
+      seededSlots,
+      config: config(),
+    });
 
     return roundRobinFormat.computeStandings({
       structure: resolved,
@@ -271,6 +276,7 @@ describe('resolveRoundRobin with an incomplete entry list', () => {
       structure,
       results: new Map<MatchId, MatchOutcome>(),
       seededSlots: seed(3),
+      config: config(),
     });
 
     const orphaned = resolved.matches.filter((match) => match.isBye);
@@ -287,7 +293,7 @@ describe('resolveRoundRobin with an incomplete entry list', () => {
     const results = new Map<MatchId, MatchOutcome>();
 
     const playable = roundRobinFormat
-      .resolveSlots({ structure, results, seededSlots: seed(3) })
+      .resolveSlots({ structure, results, seededSlots: seed(3), config: config() })
       .matches.filter((match) => !match.isBye);
 
     for (const match of playable) {
@@ -300,7 +306,8 @@ describe('resolveRoundRobin with an incomplete entry list', () => {
 
     // Cancelled fixtures must not hold the stage open forever.
     expect(
-      roundRobinFormat.resolveSlots({ structure, results, seededSlots: seed(3) }).isComplete,
+      roundRobinFormat.resolveSlots({ structure, results, seededSlots: seed(3), config: config() })
+        .isComplete,
     ).toBe(true);
   });
 });
