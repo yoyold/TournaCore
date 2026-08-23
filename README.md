@@ -38,6 +38,56 @@ npm run dev
 | `npm run test:watch`              | Unit tests in watch mode                                     |
 | `npm run test:e2e`                | End-to-end tests (builds first)                              |
 | `npm run build -- --mode analyze` | Bundle analysis written to `stats.html`                      |
+| `npm run import:challonge`        | Convert Challonge tournaments into an import file            |
+
+## Importing from Challonge
+
+Existing tournaments can be brought across with a conversion script. It runs
+offline and produces an ordinary export file, which then goes in through the
+same validated import as any other — the application itself never talks to
+Challonge, and no API key ever reaches the browser.
+
+For a **public** tournament no key is needed at all. Open
+`https://challonge.com/<slug>.json` in a browser, save it, and convert that:
+
+```bash
+npm run import:challonge -- --file bracket.json --name "My Cup"
+```
+
+The public payload carries no tournament name, which is what `--name` supplies.
+For private tournaments, or to fetch several at once, use the API instead:
+
+```bash
+export CHALLONGE_API_KEY=...
+npm run import:challonge -- --tournament my-cup --save-raw raw.json
+```
+
+Without `--out` this is a dry run: it reports what each tournament would become,
+how many results found a fixture and what it had to skip. Add `--out
+import.json` to write the file, then load it under **Import / Export** and
+choose _merge_.
+
+Worth knowing before you start:
+
+- **Teams are matched by name** across every tournament in one run, which is
+  what makes cross-tournament statistics and ratings meaningful. Pass
+  `--existing <export.json>` so teams you already have are reused rather than
+  duplicated.
+- **Single and double elimination, round robin and Swiss** convert. Tournaments
+  using Challonge's group stages are skipped rather than half-imported.
+- **The loser bracket draw is detected, not assumed.** Which winner bracket
+  casualty drops onto which survivor decides who meets whom after a defeat, and
+  bracket software does not agree on the rule. Each supported arrangement is
+  tried and whichever accounts for more of the recorded history is kept; the
+  report names it.
+- **Swiss pairings are recomputed** by this application's own algorithm, so
+  rounds after the first may pair differently than they did on Challonge. The
+  report says how many results this left unplaced.
+- **Nothing is written if a result has no fixture to sit on**, because the
+  import would be missing part of its history. `--allow-partial` overrides that
+  once you have read the report.
+- Challonge has no country codes and no series length. Flags stay empty, and
+  the best-of is inferred from the longest series actually recorded.
 
 ## Stack
 

@@ -11,6 +11,8 @@ import {
   type StageId,
 } from '@models/index';
 
+import { dropSlot } from './generate';
+
 import { doubleEliminationFormat, generateDoubleElimination } from './index';
 
 const STAGE = asId<StageId>('s1');
@@ -18,7 +20,7 @@ const STAGE = asId<StageId>('s1');
 const config = (overrides: Partial<DoubleEliminationConfig> = {}): DoubleEliminationConfig => ({
   kind: 'double_elimination',
   grandFinal: 'single',
-  loserBracketSeeding: 'reversed',
+  loserBracketSeeding: 'balanced',
   matchFormats: { default: { kind: 'bo', games: 1 } },
   ...overrides,
 });
@@ -141,7 +143,7 @@ describe('loser bracket seeding', () => {
    * come from the same half of the bracket.
    */
   it('keeps a beaten opponent out of the way on the drop-in round', () => {
-    const structure = structureFor(8, { loserBracketSeeding: 'reversed' });
+    const structure = structureFor(8, { loserBracketSeeding: 'balanced' });
 
     const dropIn = structure.matches.filter(
       (match) => match.position.bracket === 'loser' && match.position.round === 1,
@@ -176,7 +178,7 @@ describe('loser bracket seeding', () => {
    * opponent, and it must not be spent on a pairing that just happened.
    */
   it.each([8, 16, 32, 64])('avoids a rematch on every drop-in round with a choice (%i)', (size) => {
-    const { resolved } = playOut(size, { loserBracketSeeding: 'reversed' });
+    const { resolved } = playOut(size, { loserBracketSeeding: 'balanced' });
     const met = meetings(resolved.matches);
 
     for (const match of resolved.matches) {
@@ -212,7 +214,7 @@ describe('loser bracket seeding', () => {
    * only occur where the structure leaves no alternative.
    */
   it('confines repeat meetings to the last drop-in and the grand final', () => {
-    const { resolved } = playOut(8, { loserBracketSeeding: 'reversed' });
+    const { resolved } = playOut(8, { loserBracketSeeding: 'balanced' });
 
     const seen = new Set<string>();
     for (const match of resolved.matches) {
@@ -508,5 +510,44 @@ describe('map counts in the standings', () => {
     expect(table[0]?.mapsLost).toBe(0);
     // Everyone who played lost at least one map on the way out.
     expect(table.slice(1).some((entry) => entry.mapsLost > 0)).toBe(true);
+  });
+});
+
+describe('drop strategies', () => {
+  /**
+   * Each strategy is a permutation of the drop slots, and they are not
+   * interchangeable: the loser bracket pairs adjacent winner bracket matches, so
+   * changing which casualty lands where changes who meets whom after a defeat.
+   * A bracket drawn under one rule therefore cannot hold results played under
+   * another, which is why an import has to identify the right one.
+   */
+  it.each([
+    ['standard', [0, 1, 2, 3, 4, 5, 6, 7]],
+    ['reversed', [7, 6, 5, 4, 3, 2, 1, 0]],
+    ['balanced', [1, 0, 3, 2, 5, 4, 7, 6]],
+  ] as const)('%s maps the drop slots as expected', (seeding, expected) => {
+    const actual = expected.map((_, index) => dropSlot(index, 8, seeding, 1));
+    expect(actual).toEqual([...expected]);
+  });
+
+  /** What Challonge does, and therefore what reproducing its draw requires. */
+  it('alternates the rule from one drop round to the next', () => {
+    expect([0, 1, 2, 3].map((i) => dropSlot(i, 4, 'alternating', 1))).toEqual([3, 2, 1, 0]);
+    expect([0, 1, 2, 3].map((i) => dropSlot(i, 4, 'alternating', 2))).toEqual([1, 0, 3, 2]);
+    expect([0, 1, 2, 3].map((i) => dropSlot(i, 4, 'alternating', 3))).toEqual([3, 2, 1, 0]);
+  });
+
+  it('leaves a round with no choice alone', () => {
+    for (const seeding of ['standard', 'reversed', 'balanced', 'alternating'] as const) {
+      expect(dropSlot(0, 1, seeding, 1)).toBe(0);
+    }
+  });
+
+  it('produces a complete and playable bracket whichever is chosen', () => {
+    for (const seeding of ['standard', 'reversed', 'balanced', 'alternating'] as const) {
+      const { resolved } = playOut(16, { loserBracketSeeding: seeding });
+      expect(resolved.isComplete, seeding).toBe(true);
+      expect(resolved.matches.filter((m) => m.outcome !== undefined).length, seeding).toBe(30);
+    }
   });
 });

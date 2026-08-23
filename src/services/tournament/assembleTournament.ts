@@ -334,9 +334,9 @@ function doubleElimination(
   return {
     kind: 'double_elimination',
     grandFinal: choice.grandFinal,
-    // The drop order that keeps a beaten opponent out of the way; the naive
-    // alternative exists only so an imported bracket can be reproduced exactly.
-    loserBracketSeeding: 'reversed',
+    // The drop order that keeps a beaten opponent out of the way. The other
+    // strategies exist so an imported bracket can be reproduced exactly.
+    loserBracketSeeding: 'balanced',
     matchFormats: {
       default: bestOf(choice.defaultBestOf),
       // Applies to the winner bracket final and, through it, the grand final.

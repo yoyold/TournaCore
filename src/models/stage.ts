@@ -58,7 +58,24 @@ export interface DoubleEliminationConfig {
   kind: 'double_elimination';
   /** Whether the loser bracket winner needs to beat the winner bracket twice. */
   grandFinal: 'single' | 'bracket_reset';
-  loserBracketSeeding: 'standard' | 'reversed';
+  /**
+   * How winner bracket casualties are distributed across the loser bracket
+   * round that receives them.
+   *
+   * - `standard` keeps the order, which frequently pairs someone straight back
+   *   against the opponent who just knocked them out.
+   * - `reversed` turns the whole round around. This is what most bracket
+   *   software does, so it is the setting that reproduces an imported draw —
+   *   but from sixteen participants upwards it mixes the halves of the bracket
+   *   early and can still produce a rematch a round or two later.
+   * - `balanced` swaps each pair of drop slots, sending a casualty to the
+   *   sibling subtree. Provably rematch-free wherever the round offers a
+   *   choice, and the default for tournaments created here.
+   * - `alternating` uses `reversed` on the first drop round, `balanced` on the
+   *   next, and so on. Challonge draws its brackets this way, so it is what an
+   *   import from there needs.
+   */
+  loserBracketSeeding: 'standard' | 'reversed' | 'balanced' | 'alternating';
   matchFormats: RoundMatchFormats;
 }
 

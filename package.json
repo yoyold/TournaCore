@@ -20,6 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --noEmit",
+    "import:challonge": "vite-node scripts/import-challonge.ts --",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

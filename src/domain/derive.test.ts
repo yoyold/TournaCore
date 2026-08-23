@@ -256,18 +256,18 @@ describe('deriveTournamentState', () => {
       const state = deriveTournamentState({
         tournament: tournament(4, [STAGE_A, STAGE_B]),
         stages: [qualifier, playoffs],
-        // Standard seeding for four is [1, 4, 3, 2], so the second first-round
-        // match is p3 against p2 and side A there is p3.
+        // Standard seeding for four is [1, 4, 2, 3], so the second first-round
+        // match is p2 against p3 and side A there is p2.
         matches: [
           match(STAGE_A, 0, 0, won('A')), // p1 beats p4
-          match(STAGE_A, 0, 1, won('A')), // p3 beats p2
-          match(STAGE_A, 1, 0, won('A')), // p1 beats p3 in the qualifier final
+          match(STAGE_A, 0, 1, won('A')), // p2 beats p3
+          match(STAGE_A, 1, 0, won('A')), // p1 beats p2 in the qualifier final
         ],
       });
 
       const final = state.byStageId.get(STAGE_B)?.resolved.matches[0];
       expect(final?.slotA).toEqual({ kind: 'participant', participantId: 'p1' });
-      expect(final?.slotB).toEqual({ kind: 'participant', participantId: 'p3' });
+      expect(final?.slotB).toEqual({ kind: 'participant', participantId: 'p2' });
       expect(final?.status).toBe('ready');
     });
 

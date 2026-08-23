@@ -108,9 +108,9 @@ describe('generateSingleElimination', () => {
       { kind: 'seeded', slotIndex: 1 },
       { kind: 'seeded', slotIndex: 8 },
     ]);
-    expect(slots[3]).toEqual([
-      { kind: 'seeded', slotIndex: 7 },
+    expect(slots[2]).toEqual([
       { kind: 'seeded', slotIndex: 2 },
+      { kind: 'seeded', slotIndex: 7 },
     ]);
   });
 

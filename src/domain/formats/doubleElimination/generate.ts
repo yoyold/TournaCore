@@ -195,6 +195,33 @@ export function loserRoundMatchCount(size: number, round: number): number {
   return round % 2 === 1 ? size / 2 ** ((round + 1) / 2 + 1) : size / 2 ** (round / 2 + 2);
 }
 
+/**
+ * Which winner bracket match a drop slot takes its casualty from.
+ *
+ * `dropRound` counts drop-in rounds from one, and only `alternating` reads it:
+ * that strategy switches rule each time, which is how Challonge draws a bracket
+ * and therefore what reproducing an imported one requires.
+ */
+export function dropSlot(
+  index: number,
+  count: number,
+  seeding: DoubleEliminationConfig['loserBracketSeeding'],
+  dropRound: number,
+): number {
+  if (count < 2) return index;
+
+  switch (seeding) {
+    case 'reversed':
+      return count - 1 - index;
+    case 'balanced':
+      return index ^ 1;
+    case 'alternating':
+      return dropRound % 2 === 1 ? count - 1 - index : index ^ 1;
+    case 'standard':
+      return index;
+  }
+}
+
 function loserRoundSlots(input: {
   round: number;
   index: number;
@@ -227,23 +254,19 @@ function loserRoundSlots(input: {
    * alternation: loser round 1 takes winner round 1's losers, loser round 3
    * takes winner round 2's, and so on.
    *
-   * `reversed` swaps each pair of drop slots, which is what prevents an
-   * immediate rematch. The structure makes this exact rather than a heuristic:
-   * by this point loser round match i holds precisely the players knocked out of
-   * winner bracket subtree i, so sending it the casualty of the *sibling*
-   * subtree pairs two players whose paths could only have crossed in the winner
-   * bracket round that has just been played — and neither of them was in it.
-   *
-   * A whole-round reversal looks like the same idea but is not: from sixteen
-   * participants upwards it mixes the halves of the bracket a round too early,
-   * and by the third loser round no arrangement is left that avoids a rematch.
+   * Which casualty lands on which survivor is the one real choice in the
+   * design, and the three strategies differ only here. `balanced` is exact
+   * rather than a heuristic: by this point loser round match i holds precisely
+   * the players knocked out of winner bracket subtree i, so sending it the
+   * casualty of the sibling subtree pairs two players whose paths could only
+   * have crossed in the round just played — and neither was in it.
    *
    * The last drop-in round has a single match, so the winner bracket runner-up
-   * plays whoever survived the loser bracket. A repeat meeting there is inherent
-   * to the format rather than a flaw in the draw.
+   * plays whoever survived the loser bracket whatever the setting. A repeat
+   * meeting there is inherent to the format.
    */
   const winnerRound = (round + 1) / 2;
-  const dropIndex = seeding === 'reversed' && count > 1 ? index ^ 1 : index;
+  const dropIndex = dropSlot(index, count, seeding, winnerRound);
 
   return [
     { kind: 'winner_of', matchId: loserId(round - 1, index) },

@@ -117,22 +117,25 @@ export function seedOrder(size: number): number[] {
   }
   if (size < 2) return [1];
 
-  // Iterative doubling: each seed s of one level expands into the pair
-  // (s, complement) of the next, where complement = 2n+1-s.
-  //
-  // The order within each pair must alternate by position. Without that
-  // alternation the result is still a valid bracket with a constant pair sum,
-  // but not the arrangement tournaments conventionally use: size 8 would come
-  // out as [1,8,4,5,2,7,3,6] instead of [1,8,5,4,3,6,7,2].
+  /*
+   * Iterative doubling: each seed s of one level expands into the pair
+   * (s, complement) of the next, where complement = 2n+1-s.
+   *
+   * Every entry keeps its orientation, which is what produces the arrangement
+   * tournament software agrees on — size 8 comes out as [1,8,4,5,2,7,3,6],
+   * the familiar 1v8, 4v5, 2v7, 3v6.
+   *
+   * Alternating the orientation by position yields a bracket with the same
+   * first-round pairings and the same eventual meetings, so it looks equally
+   * correct in isolation. It is not interchangeable: the loser bracket pairs
+   * adjacent winner bracket matches, so the order of the matches — not just
+   * their content — decides who meets whom after a defeat.
+   */
   let order = [1, 2];
   while (order.length < size) {
     const total = order.length * 2 + 1;
     const next: number[] = [];
-    order.forEach((seed, index) => {
-      const complement = total - seed;
-      if (index % 2 === 0) next.push(seed, complement);
-      else next.push(complement, seed);
-    });
+    for (const seed of order) next.push(seed, total - seed);
     order = next;
   }
   return order;
