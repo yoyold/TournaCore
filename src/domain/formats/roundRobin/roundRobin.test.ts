@@ -11,7 +11,7 @@ import {
   type StageId,
 } from '@models/index';
 
-import { circleMethodRounds, generateRoundRobin, roundRobinFormat } from './index';
+import { circleMethodRounds, generateRoundRobin, roundRobinFormat, seedOfSlot } from './index';
 
 const STAGE = asId<StageId>('s1');
 
@@ -222,5 +222,97 @@ describe('roundRobinFormat.validate', () => {
 
   it('rejects a field too large to schedule sensibly', () => {
     expect(roundRobinFormat.validate(config(), 200).valid).toBe(false);
+  });
+});
+
+describe('circleMethodRounds with an odd field', () => {
+  /**
+   * With an odd number of entries one team has to rest each round. The rotation
+   * needs an even count to work, so a placeholder fills in and its pairings are
+   * dropped again — no fixture may be invented against nobody.
+   */
+  it('lets exactly one entry rest per round', () => {
+    const rounds = circleMethodRounds([1, 2, 3, 4, 5]);
+
+    expect(rounds).toHaveLength(5);
+    for (const round of rounds) {
+      expect(round).toHaveLength(2);
+    }
+
+    // The placeholder never reaches a pairing.
+    expect(rounds.flat().flat()).not.toContain(0);
+  });
+
+  it('still gives everyone the same number of fixtures', () => {
+    const counts = new Map<number, number>();
+    for (const [home, away] of circleMethodRounds([1, 2, 3, 4, 5]).flat()) {
+      counts.set(home, (counts.get(home) ?? 0) + 1);
+      counts.set(away, (counts.get(away) ?? 0) + 1);
+    }
+
+    expect([...counts.values()]).toEqual([4, 4, 4, 4, 4]);
+  });
+
+  it('schedules nothing for an empty field', () => {
+    expect(circleMethodRounds([])).toEqual([]);
+  });
+});
+
+describe('resolveRoundRobin with an incomplete entry list', () => {
+  /**
+   * A shorter entry list than the schedule expects leaves fixtures with one side
+   * missing. Awarding those to whoever turned up would hand out points against
+   * nobody, so they are cancelled instead.
+   */
+  it('cancels a fixture whose opponent slot was never filled', () => {
+    const structure = structureFor(4);
+    // Only three of the four slots are taken.
+    const resolved = roundRobinFormat.resolveSlots({
+      structure,
+      results: new Map<MatchId, MatchOutcome>(),
+      seededSlots: seed(3),
+    });
+
+    const orphaned = resolved.matches.filter((match) => match.isBye);
+    expect(orphaned).toHaveLength(3);
+
+    for (const match of orphaned) {
+      expect(match.status).toBe('cancelled');
+      expect(match.winnerId).toBeUndefined();
+    }
+  });
+
+  it('treats the stage as finished once every playable fixture is decided', () => {
+    const structure = structureFor(4);
+    const results = new Map<MatchId, MatchOutcome>();
+
+    const playable = roundRobinFormat
+      .resolveSlots({ structure, results, seededSlots: seed(3) })
+      .matches.filter((match) => !match.isBye);
+
+    for (const match of playable) {
+      results.set(match.id, {
+        winner: 'A',
+        reason: 'played',
+        decidedAt: '2026-01-01T00:00:00.000Z',
+      });
+    }
+
+    // Cancelled fixtures must not hold the stage open forever.
+    expect(
+      roundRobinFormat.resolveSlots({ structure, results, seededSlots: seed(3) }).isComplete,
+    ).toBe(true);
+  });
+});
+
+describe('seedOfSlot', () => {
+  it('reports the entry slot a participant occupies', () => {
+    expect(seedOfSlot(seed(4), asId<ParticipantId>('p3'))).toBe(3);
+  });
+
+  it('sorts an unknown participant last rather than throwing', () => {
+    // Ordering has to stay total even if a stored result names someone who is
+    // no longer entered.
+    expect(seedOfSlot(seed(4), asId<ParticipantId>('ghost'))).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

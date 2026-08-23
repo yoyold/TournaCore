@@ -184,3 +184,26 @@ describe('groupStageFormat.validate', () => {
     expect(groupStageFormat.validate(config({ groupCount: 99 }), 300).valid).toBe(false);
   });
 });
+
+describe('manual distribution', () => {
+  /**
+   * A stage set to manual before anyone has drawn the groups still has to
+   * produce a playable structure, so it falls back to the seeded pattern rather
+   * than leaving the groups empty.
+   */
+  it('falls back to the snake pattern until the draw is entered', () => {
+    expect(distributeSlots(16, 4, 'manual')).toEqual(distributeSlots(16, 4, 'snake'));
+  });
+});
+
+describe('groupStageFormat.validate group count', () => {
+  it('rejects a stage with no groups at all', () => {
+    const result = groupStageFormat.validate(config({ groupCount: 0 }), 8);
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.code === 'group_stage.no_groups')).toBe(true);
+  });
+
+  it('rejects a field too large to schedule', () => {
+    expect(groupStageFormat.validate(config(), 500).valid).toBe(false);
+  });
+});
