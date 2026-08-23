@@ -141,7 +141,11 @@
       "live": "Live",
       "completed": "Completed",
       "cancelled": "Cancelled"
-    }
+    },
+    "deleteTitle": "Delete tournament?",
+    "deleteMessage": "\"{{name}}\" will be permanently deleted, along with its stages and results.",
+    "deleteDetail": "{{matches}} stored matches will be lost. This cannot be undone.",
+    "deleteConfirm": "Delete permanently"
   },
   "result": {
     "title": "Record result",
@@ -183,8 +187,29 @@
       "participants": "Participants (one per line)",
       "defaultBestOf": "Default format",
       "finalBestOf": "Final",
-      "thirdPlace": "Third place match"
-    }
+      "thirdPlace": "Third place match",
+      "groupCount": "Number of groups",
+      "advancePerGroup": "Advancing per group (0 = no playoffs)",
+      "legs": "Schedule"
+    },
+    "formatLegend": "Tournament format",
+    "format": {
+      "single_elimination": "Single elimination",
+      "round_robin": "League / round robin",
+      "group_stage": "Group stage"
+    },
+    "formatHintFor": {
+      "single_elimination": "Knockout. One loss and you are out; uneven fields get automatic byes.",
+      "round_robin": "Everyone plays everyone, ranked by a table. No knockout — the table decides.",
+      "group_stage": "Several groups play round robins in parallel. The top places can carry over into a knockout."
+    },
+    "legs": {
+      "1": "Single round",
+      "2": "Home and away"
+    },
+    "previewDetail": "Shape",
+    "previewGroupsOnly": "{{groups}} groups, no knockout",
+    "previewGroupsWithPlayoffs": "{{groups}} groups, top {{advance}} of each reach the playoffs"
   },
   "teams": {
     "create": "Add team",
@@ -218,7 +243,11 @@
       "region": "Region",
       "description": "Description",
       "foundedAt": "Founded"
-    }
+    },
+    "deleteTitle": "Delete team?",
+    "deleteMessage": "\"{{name}}\" will be permanently removed from the team database.",
+    "deleteDetail": "The team appears in {{count}} tournaments, which will show \"Unknown team\" afterwards. Archiving is the gentler option.",
+    "deleteConfirm": "Delete permanently"
   },
   "statistics": {
     "tab": {
@@ -276,5 +305,34 @@
   "routeError": {
     "staleTitle": "A newer version is available",
     "staleHint": "This site was updated while the tab was open. Reloading fetches the current version."
+  },
+  "confirm": {
+    "typeToConfirm": "Type \"{{text}}\" to confirm"
+  },
+  "standings": {
+    "team": "Team",
+    "played": "P",
+    "record": "W–L",
+    "maps": "Maps",
+    "points": "Pts",
+    "qualified": "Qual",
+    "round": "Round {{round}}",
+    "vs": "vs",
+    "groupName": "Group {{index}}",
+    "decidedBy": "Decided by: {{criterion}}",
+    "tiebreaker": {
+      "head_to_head": "Head-to-head",
+      "map_difference": "Map difference",
+      "maps_won": "Maps won",
+      "round_difference": "Round difference",
+      "seed": "Seed"
+    },
+    "tiebreakerShort": {
+      "head_to_head": "H2H",
+      "map_difference": "MD",
+      "maps_won": "MW",
+      "round_difference": "RD",
+      "seed": "S"
+    }
   }
 }

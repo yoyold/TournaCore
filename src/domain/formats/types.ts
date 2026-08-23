@@ -1,5 +1,6 @@
 import type {
   FormatConfig,
+  Match,
   MatchFormat,
   MatchId,
   MatchOutcome,
@@ -138,6 +139,13 @@ export interface StandingsInput<TConfig extends FormatConfig> {
   structure: ResolvedStructure;
   config: TConfig;
   seededSlots: ReadonlyMap<number, ParticipantId>;
+  /**
+   * Stored records, needed for per-map and per-round margins.
+   *
+   * Optional because a pure bracket ranks by how far a participant got and never
+   * consults a score, while a league table needs the goal difference.
+   */
+  storedMatches?: ReadonlyMap<MatchId, Match> | undefined;
 }
 
 /**
@@ -162,6 +170,16 @@ export interface TournamentFormat<TConfig extends FormatConfig = FormatConfig> {
 
   /** Ranking as of the current state. */
   computeStandings(input: StandingsInput<TConfig>): Standing[];
+
+  /**
+   * One table per group, for formats that have groups.
+   *
+   * Optional because most formats have exactly one table. A group stage cannot
+   * express itself in a single one: participants from different groups faced
+   * different opponents, so ranking them against each other on points would be
+   * meaningless.
+   */
+  computeGroupStandings?(input: StandingsInput<TConfig>): Standing[][];
 
   /** Checks a configuration before generating, so the UI can explain problems. */
   validate(config: TConfig, slotCount: number): ValidationResult;

@@ -15,7 +15,12 @@ function draft(overrides: Partial<TournamentDraft> = {}): TournamentDraft {
       { name: 'Iron Meridian' },
       { name: 'Solstice Nine' },
     ],
-    format: { thirdPlaceMatch: false, defaultBestOf: 3, finalBestOf: 5 },
+    format: {
+      kind: 'single_elimination',
+      thirdPlaceMatch: false,
+      defaultBestOf: 3,
+      finalBestOf: 5,
+    },
     ...overrides,
   };
 }
@@ -102,15 +107,20 @@ describe('assembleTournament', () => {
     const result = assembleTournament(
       draft({
         participants: names(4),
-        format: { thirdPlaceMatch: false, defaultBestOf: 1, finalBestOf: 5 },
+        format: {
+          kind: 'single_elimination',
+          thirdPlaceMatch: false,
+          defaultBestOf: 1,
+          finalBestOf: 5,
+        },
       }),
       emptyContext,
     );
 
-    if (result.stage.format.kind !== 'single_elimination') throw new Error('wrong format');
+    if (result.stages[0]!.format.kind !== 'single_elimination') throw new Error('wrong format');
     // Four participants make two rounds; the final is round index 1.
-    expect(result.stage.format.matchFormats.default).toEqual({ kind: 'single_game' });
-    expect(result.stage.format.matchFormats.byRound?.[1]).toEqual({ kind: 'bo', games: 5 });
+    expect(result.stages[0]!.format.matchFormats.default).toEqual({ kind: 'single_game' });
+    expect(result.stages[0]!.format.matchFormats.byRound?.[1]).toEqual({ kind: 'bo', games: 5 });
   });
 
   /**
@@ -123,7 +133,7 @@ describe('assembleTournament', () => {
 
     const state = deriveTournamentState({
       tournament: result.tournament,
-      stages: [result.stage],
+      stages: result.stages,
       matches: [],
     });
 
@@ -135,6 +145,113 @@ describe('assembleTournament', () => {
       kind: 'participant',
       participantId: result.tournament.participants[0]!.id,
     });
+  });
+});
+
+describe('assembleTournament with league and group formats', () => {
+  it('builds a single league stage for a round robin', () => {
+    const result = assembleTournament(
+      draft({
+        participants: names(6),
+        format: { kind: 'round_robin', legs: 2, defaultBestOf: 1 },
+      }),
+      emptyContext,
+    );
+
+    expect(result.stages).toHaveLength(1);
+    const format = result.stages[0]!.format;
+    expect(format.kind).toBe('round_robin');
+    if (format.kind === 'round_robin') expect(format.legs).toBe(2);
+  });
+
+  it('builds only a group stage when nothing advances', () => {
+    const result = assembleTournament(
+      draft({
+        participants: names(8),
+        format: {
+          kind: 'group_stage',
+          groupCount: 2,
+          legs: 1,
+          defaultBestOf: 1,
+          advancePerGroup: 0,
+          playoffBestOf: 3,
+          playoffFinalBestOf: 5,
+        },
+      }),
+      emptyContext,
+    );
+
+    expect(result.stages).toHaveLength(1);
+    expect(result.stages[0]!.format.kind).toBe('group_stage');
+  });
+
+  /**
+   * The engine has no "groups into playoffs" format. It is two stages linked by
+   * a seeding rule, which is what makes further combinations configuration
+   * rather than code.
+   */
+  it('links a group stage to a knockout with a seeding rule', () => {
+    const result = assembleTournament(
+      draft({
+        participants: names(16),
+        format: {
+          kind: 'group_stage',
+          groupCount: 4,
+          legs: 1,
+          defaultBestOf: 1,
+          advancePerGroup: 2,
+          playoffBestOf: 3,
+          playoffFinalBestOf: 5,
+        },
+      }),
+      emptyContext,
+    );
+
+    expect(result.stages).toHaveLength(2);
+    expect(result.tournament.stageIds).toEqual(result.stages.map((stage) => stage.id));
+
+    const playoffs = result.stages[1]!;
+    expect(playoffs.format.kind).toBe('single_elimination');
+    expect(playoffs.order).toBe(1);
+
+    const rule = playoffs.entrySeeding[0]!;
+    expect(rule.source).toEqual({
+      kind: 'group_standings',
+      stageId: result.stages[0]!.id,
+      placeRange: { from: 1, to: 2 },
+    });
+    // Four groups, top two each: an eight-slot bracket.
+    expect(rule.targetSlots).toEqual({ from: 1, to: 8 });
+    expect(rule.order).toBe('snake');
+  });
+
+  it('derives a group stage that is playable from the start', () => {
+    const result = assembleTournament(
+      draft({
+        participants: names(8),
+        format: {
+          kind: 'group_stage',
+          groupCount: 2,
+          legs: 1,
+          defaultBestOf: 1,
+          advancePerGroup: 2,
+          playoffBestOf: 3,
+          playoffFinalBestOf: 5,
+        },
+      }),
+      emptyContext,
+    );
+
+    const state = deriveTournamentState({
+      tournament: result.tournament,
+      stages: result.stages,
+      matches: [],
+    });
+
+    // Two groups of four: six fixtures each, all ready to play.
+    expect(state.stages[0]?.resolved.matches).toHaveLength(12);
+    expect(state.stages[0]?.groupStandings).toHaveLength(2);
+    expect(state.stages[0]?.resolved.matches.every((m) => m.status === 'ready')).toBe(true);
   });
 });
 

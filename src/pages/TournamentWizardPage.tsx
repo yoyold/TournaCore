@@ -4,24 +4,29 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { BracketCanvas } from '@components/bracket/BracketCanvas';
+import { MatchList } from '@components/match/MatchList';
 import { Button } from '@components/ui/Button';
 import { Card, CardBody } from '@components/ui/Card';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { PageHeader } from '@components/ui/PageHeader';
-import { deriveTournamentState } from '@domain/derive';
+import { deriveTournamentState, type DerivedStage } from '@domain/derive';
 import {
   assembleTournament,
   type BestOf,
+  type FormatChoice,
   type TournamentDraft,
 } from '@services/tournament/assembleTournament';
 import { parseParticipants } from '@services/tournament/parseParticipants';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
-import type { MatchId, Team } from '@models/index';
+import type { Match, MatchId, Team } from '@models/index';
+import type { TFunction } from 'i18next';
 
 const BEST_OF_OPTIONS: BestOf[] = [1, 3, 5, 7];
 const STEP_COUNT = 4;
+
+type FormatKind = 'single_elimination' | 'round_robin' | 'group_stage';
 
 interface DraftState {
   name: string;
@@ -30,9 +35,15 @@ interface DraftState {
   startsAt: string;
   description: string;
   participantsText: string;
+  formatKind: FormatKind;
   thirdPlaceMatch: boolean;
   defaultBestOf: BestOf;
   finalBestOf: BestOf;
+  /** Round robin and group stage: one round or home and away. */
+  legs: 1 | 2;
+  groupCount: number;
+  /** Places per group that advance. Zero means the groups are the whole event. */
+  advancePerGroup: number;
 }
 
 const INITIAL: DraftState = {
@@ -42,9 +53,13 @@ const INITIAL: DraftState = {
   startsAt: '',
   description: '',
   participantsText: '',
+  formatKind: 'single_elimination',
   thirdPlaceMatch: false,
   defaultBestOf: 3,
   finalBestOf: 5,
+  legs: 1,
+  groupCount: 4,
+  advancePerGroup: 2,
 };
 
 /**
@@ -87,11 +102,7 @@ export function TournamentWizardPage() {
     const input: TournamentDraft = {
       name: draft.name,
       participants,
-      format: {
-        thirdPlaceMatch: draft.thirdPlaceMatch,
-        defaultBestOf: draft.defaultBestOf,
-        finalBestOf: draft.finalBestOf,
-      },
+      format: toFormatChoice(draft),
       ...(draft.description.trim() ? { description: draft.description } : {}),
       ...(draft.organizer.trim() ? { organizer: draft.organizer } : {}),
       ...(draft.gameName.trim() ? { gameName: draft.gameName } : {}),
@@ -109,7 +120,7 @@ export function TournamentWizardPage() {
     if (!assembled) return undefined;
     return deriveTournamentState({
       tournament: assembled.tournament,
-      stages: [assembled.stage],
+      stages: assembled.stages,
       matches: [],
     });
   }, [assembled]);
@@ -165,15 +176,13 @@ export function TournamentWizardPage() {
         {step === 2 && <FormatStep draft={draft} set={set} />}
         {step === 3 && previewStage && (
           <PreviewStep
-            structure={previewStage.structure}
-            matches={previewStage.resolved.matches}
+            stage={previewStage}
             teamOf={previewTeamOf}
             summary={{
               name: draft.name.trim(),
               participants: participants.length,
-              thirdPlace: draft.thirdPlaceMatch,
-              defaultBestOf: draft.defaultBestOf,
-              finalBestOf: draft.finalBestOf,
+              format: t(`wizard.format.${draft.formatKind}`),
+              detail: summariseFormat(draft, assembled?.stages.length ?? 1, t),
             }}
           />
         )}
@@ -389,10 +398,102 @@ function ParticipantsStep({
 
 function FormatStep({ draft, set }: StepProps) {
   const { t } = useTranslation();
+  const kinds: FormatKind[] = ['single_elimination', 'round_robin', 'group_stage'];
+
   return (
     <Card>
       <CardBody className="grid max-w-xl gap-5">
-        <p className="text-sm text-fg-secondary">{t('wizard.formatHint')}</p>
+        <fieldset className="grid gap-2">
+          <legend className="mb-1 text-sm font-medium text-fg">{t('wizard.formatLegend')}</legend>
+          {kinds.map((kind) => (
+            <label
+              key={kind}
+              className={cn(
+                'flex cursor-pointer items-start gap-2 rounded-[var(--radius-control)] border p-3',
+                draft.formatKind === kind ? 'border-accent bg-accent-subtle' : 'border-line',
+              )}
+            >
+              <input
+                type="radio"
+                name="format-kind"
+                value={kind}
+                checked={draft.formatKind === kind}
+                onChange={() => {
+                  set('formatKind', kind);
+                }}
+                className="mt-0.5 h-4 w-4 accent-[var(--tc-accent)]"
+              />
+              <span>
+                <span className="block text-sm font-medium text-fg">
+                  {t(`wizard.format.${kind}`)}
+                </span>
+                <span className="block text-xs text-fg-secondary">
+                  {t(`wizard.formatHintFor.${kind}`)}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        {draft.formatKind === 'group_stage' && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t('wizard.field.groupCount')}>
+              <input
+                type="number"
+                min={1}
+                max={16}
+                value={draft.groupCount}
+                onChange={(e) => {
+                  set('groupCount', Math.max(1, Number(e.target.value) || 1));
+                }}
+                className={inputClass}
+              />
+            </Field>
+            <Field label={t('wizard.field.advancePerGroup')}>
+              <input
+                type="number"
+                min={0}
+                max={8}
+                value={draft.advancePerGroup}
+                onChange={(e) => {
+                  set('advancePerGroup', Math.max(0, Number(e.target.value) || 0));
+                }}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        )}
+
+        {draft.formatKind !== 'single_elimination' && (
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-sm font-medium text-fg">{t('wizard.field.legs')}</legend>
+            <div className="flex gap-2">
+              {([1, 2] as const).map((option) => (
+                <label
+                  key={option}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border px-4 py-2 text-sm transition-colors',
+                    draft.legs === option
+                      ? 'border-accent bg-accent-subtle text-accent'
+                      : 'border-line text-fg-secondary hover:bg-hover hover:text-fg',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="legs"
+                    value={option}
+                    checked={draft.legs === option}
+                    onChange={() => {
+                      set('legs', option);
+                    }}
+                    className="h-4 w-4 accent-[var(--tc-accent)]"
+                  />
+                  {t(`wizard.legs.${String(option)}`)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('wizard.field.defaultBestOf')}>
@@ -403,56 +504,98 @@ function FormatStep({ draft, set }: StepProps) {
               }}
             />
           </Field>
-          <Field label={t('wizard.field.finalBestOf')}>
-            <BestOfSelect
-              value={draft.finalBestOf}
-              onChange={(value) => {
-                set('finalBestOf', value);
-              }}
-            />
-          </Field>
+          {(draft.formatKind === 'single_elimination' ||
+            (draft.formatKind === 'group_stage' && draft.advancePerGroup > 0)) && (
+            <Field label={t('wizard.field.finalBestOf')}>
+              <BestOfSelect
+                value={draft.finalBestOf}
+                onChange={(value) => {
+                  set('finalBestOf', value);
+                }}
+              />
+            </Field>
+          )}
         </div>
 
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={draft.thirdPlaceMatch}
-            onChange={(e) => {
-              set('thirdPlaceMatch', e.target.checked);
-            }}
-            className="mt-0.5 h-4 w-4 accent-[var(--tc-accent)]"
-          />
-          <span>
-            <span className="block text-sm font-medium text-fg">
-              {t('wizard.field.thirdPlace')}
+        {draft.formatKind === 'single_elimination' && (
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={draft.thirdPlaceMatch}
+              onChange={(e) => {
+                set('thirdPlaceMatch', e.target.checked);
+              }}
+              className="mt-0.5 h-4 w-4 accent-[var(--tc-accent)]"
+            />
+            <span>
+              <span className="block text-sm font-medium text-fg">
+                {t('wizard.field.thirdPlace')}
+              </span>
+              <span className="block text-xs text-fg-secondary">{t('wizard.thirdPlaceHint')}</span>
             </span>
-            <span className="block text-xs text-fg-secondary">{t('wizard.thirdPlaceHint')}</span>
-          </span>
-        </label>
+          </label>
+        )}
       </CardBody>
     </Card>
   );
 }
 
+/** One line describing what the chosen format will produce. */
+function summariseFormat(draft: DraftState, stageCount: number, t: TFunction): string {
+  if (draft.formatKind === 'round_robin') {
+    return t(`wizard.legs.${String(draft.legs)}`);
+  }
+  if (draft.formatKind === 'group_stage') {
+    return draft.advancePerGroup > 0
+      ? t('wizard.previewGroupsWithPlayoffs', {
+          groups: draft.groupCount,
+          advance: draft.advancePerGroup,
+          stages: stageCount,
+        })
+      : t('wizard.previewGroupsOnly', { groups: draft.groupCount });
+  }
+  return draft.thirdPlaceMatch ? t('wizard.field.thirdPlace') : t('common.no');
+}
+
+/** Maps the wizard's flat state onto the format the assembler expects. */
+function toFormatChoice(draft: DraftState): FormatChoice {
+  switch (draft.formatKind) {
+    case 'round_robin':
+      return { kind: 'round_robin', legs: draft.legs, defaultBestOf: draft.defaultBestOf };
+
+    case 'group_stage':
+      return {
+        kind: 'group_stage',
+        groupCount: draft.groupCount,
+        legs: draft.legs,
+        defaultBestOf: draft.defaultBestOf,
+        advancePerGroup: draft.advancePerGroup,
+        playoffBestOf: draft.defaultBestOf,
+        playoffFinalBestOf: draft.finalBestOf,
+      };
+
+    case 'single_elimination':
+    default:
+      return {
+        kind: 'single_elimination',
+        thirdPlaceMatch: draft.thirdPlaceMatch,
+        defaultBestOf: draft.defaultBestOf,
+        finalBestOf: draft.finalBestOf,
+      };
+  }
+}
+
 function PreviewStep({
-  structure,
-  matches,
+  stage,
   teamOf,
   summary,
 }: {
-  structure: Parameters<typeof BracketCanvas>[0]['structure'];
-  matches: Parameters<typeof BracketCanvas>[0]['matches'];
+  stage: DerivedStage;
   teamOf: (participantId: string) => Team | undefined;
-  summary: {
-    name: string;
-    participants: number;
-    thirdPlace: boolean;
-    defaultBestOf: BestOf;
-    finalBestOf: BestOf;
-  };
+  summary: { name: string; participants: number; format: string; detail: string };
 }) {
   const { t } = useTranslation();
-  const noMatches = useMemo(() => new Map<MatchId, never>(), []);
+  const noMatches = useMemo(() => new Map<MatchId, Match>(), []);
 
   return (
     <div className="grid gap-4">
@@ -460,27 +603,25 @@ function PreviewStep({
         <CardBody className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <Summary label={t('wizard.field.name')} value={summary.name} />
           <Summary label={t('wizard.step.participants')} value={String(summary.participants)} />
-          <Summary
-            label={t('wizard.field.defaultBestOf')}
-            value={summary.defaultBestOf === 1 ? 'BO1' : `BO${String(summary.defaultBestOf)}`}
-          />
-          <Summary
-            label={t('wizard.field.finalBestOf')}
-            value={summary.finalBestOf === 1 ? 'BO1' : `BO${String(summary.finalBestOf)}`}
-          />
-          <Summary
-            label={t('wizard.field.thirdPlace')}
-            value={summary.thirdPlace ? t('common.yes') : t('common.no')}
-          />
+          <Summary label={t('wizard.formatLegend')} value={summary.format} />
+          <Summary label={t('wizard.previewDetail')} value={summary.detail} />
         </CardBody>
       </Card>
 
-      <BracketCanvas
-        structure={structure}
-        matches={matches}
-        storedMatches={noMatches}
-        teamOf={teamOf}
-      />
+      {/*
+        The preview uses the same components the live tournament does, so a
+        league previews as a fixture list rather than as an empty bracket.
+      */}
+      {stage.stage.format.kind === 'single_elimination' ? (
+        <BracketCanvas
+          structure={stage.structure}
+          matches={stage.resolved.matches}
+          storedMatches={noMatches}
+          teamOf={teamOf}
+        />
+      ) : (
+        <MatchList matches={stage.resolved.matches} storedMatches={noMatches} teamOf={teamOf} />
+      )}
     </div>
   );
 }

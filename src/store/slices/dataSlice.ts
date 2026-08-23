@@ -61,6 +61,15 @@ export interface DataState {
   removeTournament: (id: TournamentId) => Promise<void>;
   /** Archives rather than deletes, to keep match history intact. */
   archiveTeam: (id: TeamId) => Promise<void>;
+  /**
+   * Deletes a team outright.
+   *
+   * Archiving is the safer option and stays the default in the UI; this exists
+   * for teams created by mistake. Tournaments keep their participant entries, so
+   * a bracket that referenced the team still renders — with an unknown name
+   * rather than a crash.
+   */
+  removeTeam: (id: TeamId) => Promise<void>;
 }
 
 function index<TId extends string, TEntity extends { id: TId }>(
@@ -193,7 +202,7 @@ export const useDataStore = create<DataState>()((set, get) => {
         if (assembled.newGame) await gameRepository.put(assembled.newGame);
         if (assembled.newTeams.length > 0) await teamRepository.putMany(assembled.newTeams);
         await tournamentRepository.put(assembled.tournament);
-        await stageRepository.put(assembled.stage);
+        await stageRepository.putMany(assembled.stages);
 
         set((state) => ({
           games: assembled.newGame
@@ -201,7 +210,7 @@ export const useDataStore = create<DataState>()((set, get) => {
             : state.games,
           teams: { ...state.teams, ...index(assembled.newTeams) },
           tournaments: { ...state.tournaments, [assembled.tournament.id]: assembled.tournament },
-          stages: { ...state.stages, [assembled.stage.id]: assembled.stage },
+          stages: { ...state.stages, ...index(assembled.stages) },
         }));
       });
     },
@@ -282,6 +291,13 @@ export const useDataStore = create<DataState>()((set, get) => {
             matches.map((match) => match.id),
           ),
         }));
+      });
+    },
+
+    removeTeam: async (id) => {
+      await guard(async () => {
+        await teamRepository.remove(id);
+        set((state) => ({ teams: omit(state.teams, [id]) }));
       });
     },
 

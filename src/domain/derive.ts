@@ -21,6 +21,8 @@ export interface DerivedStage {
   structure: GeneratedStructure;
   resolved: ResolvedStructure;
   standings: Standing[];
+  /** One table per group, for formats that have them. Empty otherwise. */
+  groupStandings: Standing[][];
   /** Entry slots this stage was populated with, 1-based. */
   seededSlots: ReadonlyMap<number, ParticipantId>;
   /** True once every playable match in the stage has a result. */
@@ -67,6 +69,7 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
     .sort((a, b) => a.order - b.order);
 
   const outcomes = collectOutcomes(matches);
+  const byMatchId = new Map(matches.map((match) => [match.id, match]));
   const derived: DerivedStage[] = [];
   const byStageId = new Map<StageId, DerivedStage>();
   const sourceStages = new Map<StageId, SeedingSourceStage>();
@@ -94,17 +97,22 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
 
     const resolved = format.resolveSlots({ structure, results: outcomes, seededSlots });
 
-    const standings = format.computeStandings({
+    const standingsInput = {
       structure: resolved,
       config: stage.format as never,
       seededSlots,
-    });
+      storedMatches: byMatchId,
+    };
+
+    const standings = format.computeStandings(standingsInput);
+    const groupStandings = format.computeGroupStandings?.(standingsInput) ?? [];
 
     const entry: DerivedStage = {
       stage,
       structure,
       resolved,
       standings,
+      groupStandings,
       seededSlots,
       isComplete: resolved.isComplete,
     };
@@ -116,6 +124,8 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
       standings,
       resolved,
       isComplete: resolved.isComplete,
+      // Lets a following stage seed from "top two of each group".
+      ...(groupStandings.length > 0 ? { groupStandings } : {}),
     });
   }
 

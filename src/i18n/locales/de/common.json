@@ -141,7 +141,11 @@
       "live": "Laufend",
       "completed": "Abgeschlossen",
       "cancelled": "Abgesagt"
-    }
+    },
+    "deleteTitle": "Turnier löschen?",
+    "deleteMessage": "„{{name}}“ wird mit allen Phasen und Ergebnissen dauerhaft gelöscht.",
+    "deleteDetail": "{{matches}} gespeicherte Matches gehen verloren. Das lässt sich nicht rückgängig machen.",
+    "deleteConfirm": "Endgültig löschen"
   },
   "result": {
     "title": "Ergebnis eintragen",
@@ -183,8 +187,29 @@
       "participants": "Teilnehmer (einer pro Zeile)",
       "defaultBestOf": "Standard-Format",
       "finalBestOf": "Finale",
-      "thirdPlace": "Spiel um Platz 3"
-    }
+      "thirdPlace": "Spiel um Platz 3",
+      "groupCount": "Anzahl Gruppen",
+      "advancePerGroup": "Qualifiziert je Gruppe (0 = keine Playoffs)",
+      "legs": "Spielmodus"
+    },
+    "formatLegend": "Turnierformat",
+    "format": {
+      "single_elimination": "Single Elimination",
+      "round_robin": "Liga / Round Robin",
+      "group_stage": "Gruppenphase"
+    },
+    "formatHintFor": {
+      "single_elimination": "K.-o.-System. Eine Niederlage bedeutet das Aus, ungerade Teamzahlen erhalten automatisch Freilose.",
+      "round_robin": "Jeder gegen jeden mit Punktetabelle. Ohne K.-o.-Runde — die Tabelle entscheidet.",
+      "group_stage": "Mehrere Gruppen spielen parallel jeder gegen jeden. Optional qualifizieren sich die Besten für eine K.-o.-Runde."
+    },
+    "legs": {
+      "1": "Nur Hinrunde",
+      "2": "Hin- und Rückrunde"
+    },
+    "previewDetail": "Ausgestaltung",
+    "previewGroupsOnly": "{{groups}} Gruppen, keine K.-o.-Runde",
+    "previewGroupsWithPlayoffs": "{{groups}} Gruppen, die besten {{advance}} je Gruppe erreichen die Playoffs"
   },
   "teams": {
     "create": "Team anlegen",
@@ -218,7 +243,11 @@
       "region": "Region",
       "description": "Beschreibung",
       "foundedAt": "Gegründet"
-    }
+    },
+    "deleteTitle": "Team löschen?",
+    "deleteMessage": "„{{name}}“ wird dauerhaft aus der Teamdatenbank entfernt.",
+    "deleteDetail": "Das Team ist in {{count}} Turnieren eingetragen. Dort erscheint danach „Unbekanntes Team“. Archivieren wäre die schonendere Wahl.",
+    "deleteConfirm": "Endgültig löschen"
   },
   "statistics": {
     "tab": {
@@ -276,5 +305,34 @@
   "routeError": {
     "staleTitle": "Neue Version verfügbar",
     "staleHint": "Diese Seite wurde aktualisiert, während der Tab offen war. Ein Neuladen holt die aktuelle Fassung."
+  },
+  "confirm": {
+    "typeToConfirm": "Tippe „{{text}}“ zum Bestätigen"
+  },
+  "standings": {
+    "team": "Team",
+    "played": "Sp",
+    "record": "S–N",
+    "maps": "Maps",
+    "points": "Pkt",
+    "qualified": "Quali",
+    "round": "Runde {{round}}",
+    "vs": "gegen",
+    "groupName": "Gruppe {{index}}",
+    "decidedBy": "Entschieden durch: {{criterion}}",
+    "tiebreaker": {
+      "head_to_head": "Direkter Vergleich",
+      "map_difference": "Mapdifferenz",
+      "maps_won": "Gewonnene Maps",
+      "round_difference": "Rundendifferenz",
+      "seed": "Setzung"
+    },
+    "tiebreakerShort": {
+      "head_to_head": "DV",
+      "map_difference": "MD",
+      "maps_won": "MW",
+      "round_difference": "RD",
+      "seed": "S"
+    }
   }
 }

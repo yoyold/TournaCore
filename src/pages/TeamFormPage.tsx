@@ -1,10 +1,11 @@
-import { Archive, Save } from 'lucide-react';
+import { Archive, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { Button } from '@components/ui/Button';
 import { Card, CardBody } from '@components/ui/Card';
+import { ConfirmDialog } from '@components/ui/ConfirmDialog';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { PageHeader } from '@components/ui/PageHeader';
 import { asId, newTeamId, now, type Team, type TeamId } from '@models/index';
@@ -56,12 +57,25 @@ function TeamForm({ existing }: { existing: Team | undefined }) {
   const navigate = useNavigate();
   const saveTeam = useDataStore((s) => s.saveTeam);
   const archiveTeam = useDataStore((s) => s.archiveTeam);
+  const removeTeam = useDataStore((s) => s.removeTeam);
+  const tournaments = useDataStore((s) => s.tournaments);
 
   const [form, setForm] = useState<FormState>(() => toForm(existing));
   const [saving, setSaving] = useState(false);
   // An existing tag was chosen deliberately and must not be overwritten while
   // the name is edited.
   const [tagTouched, setTagTouched] = useState(existing !== undefined);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  /*
+   * How many tournaments still reference this team. Deleting does not rewrite
+   * them, so the user should know what will be left showing an unknown name.
+   */
+  const referencedIn = existing
+    ? Object.values(tournaments).filter((tournament) =>
+        tournament.participants.some((participant) => participant.teamId === existing.id),
+      ).length
+    : 0;
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]): void => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -99,6 +113,12 @@ function TeamForm({ existing }: { existing: Team | undefined }) {
   const onArchive = async (): Promise<void> => {
     if (!existing) return;
     await archiveTeam(existing.id);
+    void navigate('/teams');
+  };
+
+  const onDelete = async (): Promise<void> => {
+    if (!existing) return;
+    await removeTeam(existing.id);
     void navigate('/teams');
   };
 
@@ -195,6 +215,22 @@ function TeamForm({ existing }: { existing: Team | undefined }) {
         </CardBody>
       </Card>
 
+      {confirmingDelete && existing && (
+        <ConfirmDialog
+          title={t('teams.deleteTitle')}
+          message={t('teams.deleteMessage', { name: existing.name })}
+          detail={referencedIn > 0 ? t('teams.deleteDetail', { count: referencedIn }) : undefined}
+          confirmLabel={t('teams.deleteConfirm')}
+          requireText={existing.name}
+          onCancel={() => {
+            setConfirmingDelete(false);
+          }}
+          onConfirm={() => {
+            void onDelete();
+          }}
+        />
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-2">
         {existing && !existing.archived && (
           <Button
@@ -206,6 +242,19 @@ function TeamForm({ existing }: { existing: Team | undefined }) {
             }}
           >
             {t('teams.archive')}
+          </Button>
+        )}
+
+        {existing && (
+          <Button
+            variant="ghost"
+            icon={<Trash2 size={16} aria-hidden />}
+            disabled={saving}
+            onClick={() => {
+              setConfirmingDelete(true);
+            }}
+          >
+            {t('common.delete')}
           </Button>
         )}
 

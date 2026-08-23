@@ -1,5 +1,7 @@
 import { roundCount } from '@domain/bracket/bracketMath';
 import {
+  DEFAULT_POINT_SYSTEM,
+  DEFAULT_TIEBREAKERS,
   newGameId,
   newParticipantId,
   newSeedingRuleId,
@@ -7,13 +9,16 @@ import {
   newTeamId,
   newTournamentId,
   now,
+  type FormatConfig,
   type Game,
   type MatchFormat,
   type Participant,
-  type SingleEliminationConfig,
+  type SeedingRule,
   type Stage,
+  type StageId,
   type Team,
   type Tournament,
+  type TournamentId,
 } from '@models/index';
 import { uniqueSlug } from '@utils/slug';
 
@@ -21,19 +26,49 @@ import { deriveTag, type ParsedParticipant } from './parseParticipants';
 
 export type BestOf = 1 | 3 | 5 | 7;
 
+/**
+ * The tournament shapes the wizard offers.
+ *
+ * Deliberately a small, named set rather than a free-form stage editor. These
+ * cover what organisers actually run, and each maps onto the generic stage model
+ * underneath — so a full editor can be added later without changing anything the
+ * engine does.
+ */
+export type FormatChoice =
+  | {
+      kind: 'single_elimination';
+      thirdPlaceMatch: boolean;
+      defaultBestOf: BestOf;
+      finalBestOf: BestOf;
+    }
+  | {
+      kind: 'round_robin';
+      /** 1 for a single round, 2 for home and away. */
+      legs: 1 | 2;
+      defaultBestOf: BestOf;
+    }
+  | {
+      kind: 'group_stage';
+      groupCount: number;
+      legs: 1 | 2;
+      defaultBestOf: BestOf;
+      /**
+       * Places per group that carry over into a knockout stage.
+       * Zero means the group stage is the whole tournament.
+       */
+      advancePerGroup: number;
+      playoffBestOf: BestOf;
+      playoffFinalBestOf: BestOf;
+    };
+
 export interface TournamentDraft {
   name: string;
   description?: string;
   organizer?: string;
   startsAt?: string;
-  /** Optional game title; a Game record is created when provided. */
   gameName?: string;
   participants: readonly ParsedParticipant[];
-  format: {
-    thirdPlaceMatch: boolean;
-    defaultBestOf: BestOf;
-    finalBestOf: BestOf;
-  };
+  format: FormatChoice;
 }
 
 export interface AssembleContext {
@@ -43,23 +78,21 @@ export interface AssembleContext {
 }
 
 export interface AssembledTournament {
-  /** Teams that did not exist yet and must be persisted. */
   newTeams: Team[];
-  /** Game to persist, when the draft named one that did not exist. */
   newGame?: Game;
   tournament: Tournament;
-  stage: Stage;
+  /** One or more stages, in playing order. */
+  stages: Stage[];
 }
 
 /**
- * Assembles the entities for a new single elimination tournament from wizard input.
+ * Assembles the entities for a new tournament from wizard input.
  *
- * Two behaviours are worth calling out. Teams are matched to existing records by
- * name, case-insensitively, so running two tournaments with the same clubs reuses
- * their teams rather than duplicating them — the "teams persist and are reused"
- * promise, delivered without a separate team-management step. And nothing here is
- * persisted: the caller decides when to save, which lets the wizard render a live
- * preview from the very same entities it will later store.
+ * Nothing is persisted: the caller decides when to save, which is what lets the
+ * wizard preview the real thing rather than an approximation of it.
+ *
+ * Teams are matched to existing records by name, case-insensitively, so running
+ * two tournaments with the same clubs reuses them instead of duplicating.
  */
 export function assembleTournament(
   draft: TournamentDraft,
@@ -87,27 +120,9 @@ export function assembleTournament(
   });
 
   const { gameId, newGame } = resolveGame(draft.gameName, context.existingGames, timestamp);
-
   const tournamentId = newTournamentId();
-  const stageId = newStageId();
 
-  const stage: Stage = {
-    id: stageId,
-    tournamentId,
-    name: 'Main Bracket',
-    order: 0,
-    format: buildFormat(draft.format, participants.length),
-    entrySeeding: [
-      {
-        id: newSeedingRuleId(),
-        source: { kind: 'participants' },
-        targetSlots: { from: 1, to: Math.max(participants.length, 1) },
-        order: 'as_ranked',
-      },
-    ],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
+  const stages = buildStages(draft.format, participants.length, tournamentId, timestamp);
 
   const tournament: Tournament = {
     id: tournamentId,
@@ -116,7 +131,7 @@ export function assembleTournament(
     gameId,
     status: 'live',
     participants,
-    stageIds: [stageId],
+    stageIds: stages.map((stage) => stage.id),
     createdAt: timestamp,
     updatedAt: timestamp,
     ...(draft.description?.trim() ? { description: draft.description.trim() } : {}),
@@ -124,7 +139,147 @@ export function assembleTournament(
     ...(draft.startsAt ? { startsAt: draft.startsAt } : {}),
   };
 
-  return { newTeams, tournament, stage, ...(newGame ? { newGame } : {}) };
+  return { newTeams, tournament, stages, ...(newGame ? { newGame } : {}) };
+}
+
+/**
+ * Turns a format choice into stages.
+ *
+ * A group stage with knockout becomes two stages linked by a seeding rule — the
+ * engine has no notion of "group stage into playoffs" as a format, only stages
+ * that read from one another. That is what makes further combinations a matter
+ * of configuration rather than code.
+ */
+function buildStages(
+  choice: FormatChoice,
+  participantCount: number,
+  tournamentId: TournamentId,
+  timestamp: string,
+): Stage[] {
+  const firstStageId = newStageId();
+  const slots = Math.max(participantCount, 1);
+
+  const entrySeeding: SeedingRule[] = [
+    {
+      id: newSeedingRuleId(),
+      source: { kind: 'participants' },
+      targetSlots: { from: 1, to: slots },
+      order: 'as_ranked',
+    },
+  ];
+
+  const base = {
+    tournamentId,
+    order: 0,
+    entrySeeding,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  switch (choice.kind) {
+    case 'single_elimination':
+      return [
+        {
+          ...base,
+          id: firstStageId,
+          name: 'Main Bracket',
+          format: singleElimination(choice, participantCount),
+        },
+      ];
+
+    case 'round_robin':
+      return [
+        {
+          ...base,
+          id: firstStageId,
+          name: 'League',
+          format: {
+            kind: 'round_robin',
+            legs: choice.legs,
+            pointSystem: DEFAULT_POINT_SYSTEM,
+            tiebreakers: [...DEFAULT_TIEBREAKERS],
+            matchFormat: bestOf(choice.defaultBestOf),
+          },
+        },
+      ];
+
+    case 'group_stage': {
+      const groupStage: Stage = {
+        ...base,
+        id: firstStageId,
+        name: 'Group Stage',
+        format: {
+          kind: 'group_stage',
+          groupCount: choice.groupCount,
+          distribution: 'snake',
+          perGroup: {
+            legs: choice.legs,
+            pointSystem: DEFAULT_POINT_SYSTEM,
+            tiebreakers: [...DEFAULT_TIEBREAKERS],
+            matchFormat: bestOf(choice.defaultBestOf),
+          },
+        },
+      };
+
+      if (choice.advancePerGroup < 1) return [groupStage];
+
+      const qualifiers = choice.groupCount * choice.advancePerGroup;
+      const playoffs: Stage = {
+        id: newStageId(),
+        tournamentId,
+        name: 'Playoffs',
+        order: 1,
+        format: singleElimination(
+          {
+            kind: 'single_elimination',
+            thirdPlaceMatch: false,
+            defaultBestOf: choice.playoffBestOf,
+            finalBestOf: choice.playoffFinalBestOf,
+          },
+          qualifiers,
+        ),
+        entrySeeding: [
+          {
+            id: newSeedingRuleId(),
+            source: {
+              kind: 'group_standings',
+              stageId: firstStageId,
+              placeRange: { from: 1, to: choice.advancePerGroup },
+            },
+            targetSlots: { from: 1, to: qualifiers },
+            // Snake keeps the group winners in opposite halves of the bracket,
+            // so they cannot meet before the final.
+            order: 'snake',
+          },
+        ],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+
+      return [groupStage, playoffs];
+    }
+
+    default:
+      return [];
+  }
+}
+
+function singleElimination(
+  choice: Extract<FormatChoice, { kind: 'single_elimination' }>,
+  participantCount: number,
+): FormatConfig {
+  const rounds = roundCount(participantCount);
+
+  return {
+    kind: 'single_elimination',
+    thirdPlaceMatch: choice.thirdPlaceMatch,
+    byePlacement: 'seeded',
+    matchFormats: {
+      default: bestOf(choice.defaultBestOf),
+      // The final gets its own length; the third place match shares that round.
+      ...(rounds >= 1 ? { byRound: { [rounds - 1]: bestOf(choice.finalBestOf) } } : {}),
+    },
+  };
 }
 
 function createTeam(parsed: ParsedParticipant, timestamp: string): Team {
@@ -167,26 +322,8 @@ function resolveGame(
   return { gameId: game.id, newGame: game };
 }
 
-function buildFormat(
-  format: TournamentDraft['format'],
-  participantCount: number,
-): SingleEliminationConfig {
-  const rounds = roundCount(participantCount);
-  const defaultFormat: MatchFormat = bestOf(format.defaultBestOf);
-
-  return {
-    kind: 'single_elimination',
-    thirdPlaceMatch: format.thirdPlaceMatch,
-    byePlacement: 'seeded',
-    matchFormats: {
-      default: defaultFormat,
-      // Give the final its own best-of. The third place match shares the final
-      // round index, so both pick it up.
-      ...(rounds >= 1 ? { byRound: { [rounds - 1]: bestOf(format.finalBestOf) } } : {}),
-    },
-  };
-}
-
 function bestOf(games: BestOf): MatchFormat {
   return games === 1 ? { kind: 'single_game' } : { kind: 'bo', games };
 }
+
+export type { StageId };

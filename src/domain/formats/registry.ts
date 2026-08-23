@@ -1,5 +1,7 @@
 import { InvariantError } from '@utils/invariant';
 
+import { groupStageFormat } from './groupStage';
+import { roundRobinFormat } from './roundRobin';
 import { singleEliminationFormat } from './singleElimination';
 
 import type { TournamentFormat } from './types';
@@ -20,6 +22,8 @@ function register<TConfig extends FormatConfig>(format: TournamentFormat<TConfig
 }
 
 register(singleEliminationFormat);
+register(roundRobinFormat);
+register(groupStageFormat);
 
 /** Returns the format handler, or undefined when the kind is not implemented yet. */
 export function findFormat(kind: FormatKind): TournamentFormat<never> | undefined {
