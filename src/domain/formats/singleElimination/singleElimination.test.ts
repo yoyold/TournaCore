@@ -108,9 +108,9 @@ describe('generateSingleElimination', () => {
       { kind: 'seeded', slotIndex: 1 },
       { kind: 'seeded', slotIndex: 8 },
     ]);
-    expect(slots[2]).toEqual([
-      { kind: 'seeded', slotIndex: 2 },
+    expect(slots[3]).toEqual([
       { kind: 'seeded', slotIndex: 7 },
+      { kind: 'seeded', slotIndex: 2 },
     ]);
   });
 
@@ -329,5 +329,53 @@ describe('computeSingleEliminationStandings', () => {
     const standings = standingsFor(8);
     expect(standings.filter((s) => s.losses === 0)).toHaveLength(1);
     expect(standings.filter((s) => s.losses === 1)).toHaveLength(7);
+  });
+});
+
+describe('stages that predate the seeding setting', () => {
+  /**
+   * The guarantee this exists to protect.
+   *
+   * A stored result names a position — "winner bracket, round 0, match 2, side A
+   * won" — and which participant occupies that position is derived. Changing the
+   * arrangement under a stage that never asked for it therefore does not correct
+   * anything, it silently reassigns every result the stage holds.
+   *
+   * So a configuration without `seedArrangement` must keep deriving exactly as it
+   * did when it was written, forever.
+   */
+  it('keep the arrangement they were drawn with', () => {
+    const legacy = structureFor(8).matches.filter((match) => match.position.round === 0);
+    const slots = legacy.map((match) => [
+      match.slotA.kind === 'seeded' ? match.slotA.slotIndex : undefined,
+      match.slotB.kind === 'seeded' ? match.slotB.slotIndex : undefined,
+    ]);
+
+    expect(slots).toEqual([
+      [1, 8],
+      [5, 4],
+      [3, 6],
+      [7, 2],
+    ]);
+  });
+
+  it('differ from a stage that asks for the standard arrangement', () => {
+    const modern = generateSingleElimination({
+      stageId: STAGE,
+      config: { ...config(), seedArrangement: 'standard' },
+      slotCount: 8,
+    }).matches.filter((match) => match.position.round === 0);
+
+    const slots = modern.map((match) => [
+      match.slotA.kind === 'seeded' ? match.slotA.slotIndex : undefined,
+      match.slotB.kind === 'seeded' ? match.slotB.slotIndex : undefined,
+    ]);
+
+    expect(slots).toEqual([
+      [1, 8],
+      [4, 5],
+      [2, 7],
+      [3, 6],
+    ]);
   });
 });

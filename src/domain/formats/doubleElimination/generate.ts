@@ -59,7 +59,7 @@ export function generateDoubleElimination(input: {
   // Winner bracket
   // ---------------------------------------------------------------------
 
-  const order = seedOrder(size);
+  const order = seedOrder(size, config.seedArrangement);
 
   for (let index = 0; index < size / 2; index += 1) {
     const seedA = order[index * 2];

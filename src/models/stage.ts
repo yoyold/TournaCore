@@ -46,11 +46,31 @@ export const DEFAULT_TIEBREAKERS: readonly Tiebreaker[] = [
 // Format configuration
 // ---------------------------------------------------------------------------
 
+/**
+ * Which arrangement of the standard seeding order a bracket uses.
+ *
+ * Both put the same participants in the same first-round pairings and let seeds
+ * one and two meet only in the final. They differ in the *order* of the matches,
+ * and that is not cosmetic: a stored result names a position, not a pairing, so
+ * changing the arrangement under existing data silently reassigns every result.
+ *
+ * It is therefore configuration rather than a constant. `standard` is what
+ * tournament software agrees on and what new tournaments use; `mirrored` exists
+ * because stages created before this was configurable were drawn that way, and
+ * their recorded results have to keep meaning what they meant.
+ */
+export type SeedArrangement = 'standard' | 'mirrored';
+
+/** Arrangement for a stage that predates the setting. Never change this. */
+export const LEGACY_SEED_ARRANGEMENT: SeedArrangement = 'mirrored';
+
 export interface SingleEliminationConfig {
   kind: 'single_elimination';
   thirdPlaceMatch: boolean;
   /** Whether byes follow the seeding or are drawn at random. */
   byePlacement: 'seeded' | 'random';
+  /** Absent on stages created before the setting existed. */
+  seedArrangement?: SeedArrangement;
   matchFormats: RoundMatchFormats;
 }
 
@@ -76,6 +96,8 @@ export interface DoubleEliminationConfig {
    *   import from there needs.
    */
   loserBracketSeeding: 'standard' | 'reversed' | 'balanced' | 'alternating';
+  /** Absent on stages created before the setting existed. */
+  seedArrangement?: SeedArrangement;
   matchFormats: RoundMatchFormats;
 }
 

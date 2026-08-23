@@ -317,6 +317,9 @@ function singleElimination(
     kind: 'single_elimination',
     thirdPlaceMatch: choice.thirdPlaceMatch,
     byePlacement: 'seeded',
+    // Stated rather than inherited: the arrangement decides which position each
+    // seed occupies, and a stored result names a position.
+    seedArrangement: 'standard',
     matchFormats: {
       default: bestOf(choice.defaultBestOf),
       // The final gets its own length; the third place match shares that round.
@@ -334,6 +337,7 @@ function doubleElimination(
   return {
     kind: 'double_elimination',
     grandFinal: choice.grandFinal,
+    seedArrangement: 'standard',
     // The drop order that keeps a beaten opponent out of the way. The other
     // strategies exist so an imported bracket can be reproduced exactly.
     loserBracketSeeding: 'balanced',

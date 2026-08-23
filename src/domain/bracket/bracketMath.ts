@@ -1,3 +1,4 @@
+import { LEGACY_SEED_ARRANGEMENT, type SeedArrangement } from '@models/index';
 import { InvariantError } from '@utils/invariant';
 
 /**
@@ -98,11 +99,12 @@ export function matchesPerRound(participantCount: number): number[] {
 }
 
 /**
- * Standard seeding order for a bracket of the given size.
+ * Seeding order for a bracket of the given size.
  *
  * Returns seed numbers in slot order such that the strongest participants are
- * placed as far apart as possible. For 8 slots this yields
- * `[1, 8, 5, 4, 3, 6, 7, 2]`, so seeds 1 and 2 can only meet in the final.
+ * placed as far apart as possible, so seeds 1 and 2 can only meet in the final.
+ * `standard` yields `[1, 8, 4, 5, 2, 7, 3, 6]` for eight slots — the familiar
+ * 1v8, 4v5, 2v7, 3v6 that tournament software agrees on.
  *
  * This also drives bye distribution: because byes occupy the highest seed
  * numbers, they automatically fall to the strongest participants, matching
@@ -110,7 +112,10 @@ export function matchesPerRound(participantCount: number): number[] {
  *
  * @param size Bracket size, must be a power of two.
  */
-export function seedOrder(size: number): number[] {
+export function seedOrder(
+  size: number,
+  arrangement: SeedArrangement = LEGACY_SEED_ARRANGEMENT,
+): number[] {
   assertNonNegativeInteger(size, 'seedOrder');
   if (size !== nextPowerOfTwo(size)) {
     throw new InvariantError(`seedOrder expects a power of two, received ${String(size)}`);
@@ -121,23 +126,26 @@ export function seedOrder(size: number): number[] {
    * Iterative doubling: each seed s of one level expands into the pair
    * (s, complement) of the next, where complement = 2n+1-s.
    *
-   * Every entry keeps its orientation, which is what produces the arrangement
-   * tournament software agrees on — size 8 comes out as [1,8,4,5,2,7,3,6],
-   * the familiar 1v8, 4v5, 2v7, 3v6.
-   *
-   * Alternating the orientation by position yields a bracket with the same
-   * first-round pairings and the same eventual meetings, so it looks equally
-   * correct in isolation. It is not interchangeable: the loser bracket pairs
-   * adjacent winner bracket matches, so the order of the matches — not just
-   * their content — decides who meets whom after a defeat.
+   * Keeping every entry's orientation gives the standard arrangement.
+   * Alternating it by position gives a bracket with the same pairings and the
+   * same eventual meetings but a different order of matches — equally valid in
+   * isolation, and not interchangeable, because a stored result names a
+   * position rather than a pairing.
    */
+  const alternate = arrangement === 'mirrored';
   let order = [1, 2];
+
   while (order.length < size) {
     const total = order.length * 2 + 1;
     const next: number[] = [];
-    for (const seed of order) next.push(seed, total - seed);
+    order.forEach((seed, index) => {
+      const complement = total - seed;
+      if (alternate && index % 2 === 1) next.push(complement, seed);
+      else next.push(seed, complement);
+    });
     order = next;
   }
+
   return order;
 }
 

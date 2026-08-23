@@ -121,9 +121,20 @@ describe('matchesPerRound', () => {
 describe('seedOrder', () => {
   it('produces the conventional standard order', () => {
     // The arrangement tournament software agrees on: 1v8, 4v5, 2v7, 3v6.
-    expect(seedOrder(2)).toEqual([1, 2]);
-    expect(seedOrder(4)).toEqual([1, 4, 2, 3]);
-    expect(seedOrder(8)).toEqual([1, 8, 4, 5, 2, 7, 3, 6]);
+    expect(seedOrder(2, 'standard')).toEqual([1, 2]);
+    expect(seedOrder(4, 'standard')).toEqual([1, 4, 2, 3]);
+    expect(seedOrder(8, 'standard')).toEqual([1, 8, 4, 5, 2, 7, 3, 6]);
+  });
+
+  /**
+   * Stages drawn before the arrangement was configurable have to keep deriving
+   * exactly as they did. A stored result names a position, so changing what
+   * occupies that position rewrites history rather than correcting it.
+   */
+  it('keeps the older arrangement available, and uses it by default', () => {
+    expect(seedOrder(4, 'mirrored')).toEqual([1, 4, 3, 2]);
+    expect(seedOrder(8, 'mirrored')).toEqual([1, 8, 5, 4, 3, 6, 7, 2]);
+    expect(seedOrder(8)).toEqual(seedOrder(8, 'mirrored'));
   });
 
   it('pairs first round slots to a constant seed sum', () => {
@@ -153,10 +164,12 @@ describe('seedOrder', () => {
    * only for one of several equally valid arrangements.
    */
   it('places seeds 1 and 2 in opposite halves', () => {
-    for (const size of [4, 8, 16, 32]) {
-      const order = seedOrder(size);
-      expect(order[0]).toBe(1);
-      expect(order.indexOf(2)).toBeGreaterThanOrEqual(size / 2);
+    for (const arrangement of ['standard', 'mirrored'] as const) {
+      for (const size of [4, 8, 16, 32]) {
+        const order = seedOrder(size, arrangement);
+        expect(order[0]).toBe(1);
+        expect(order.indexOf(2)).toBeGreaterThanOrEqual(size / 2);
+      }
     }
   });
 

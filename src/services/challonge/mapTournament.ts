@@ -660,6 +660,7 @@ function toFormatConfig(
       kind: 'single_elimination',
       thirdPlaceMatch: source.hold_third_place_match === true,
       byePlacement: 'seeded',
+      seedArrangement: 'standard',
       matchFormats: { default: matchFormat },
     };
   }
@@ -675,6 +676,7 @@ function toFormatConfig(
     return {
       kind: 'double_elimination',
       grandFinal: modifier === '' ? 'bracket_reset' : 'single',
+      seedArrangement: 'standard',
       loserBracketSeeding: 'reversed',
       matchFormats: { default: matchFormat },
     };

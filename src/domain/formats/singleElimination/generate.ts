@@ -45,7 +45,7 @@ export function generateSingleElimination(input: {
 
   // Round 0 draws its participants directly from the entry slots, arranged by
   // the standard seeding order.
-  const order = seedOrder(size);
+  const order = seedOrder(size, config.seedArrangement);
   const firstRoundMatches = size / 2;
 
   for (let index = 0; index < firstRoundMatches; index += 1) {
