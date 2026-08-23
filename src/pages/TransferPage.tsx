@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@components/ui/Card';
 import { PageHeader } from '@components/ui/PageHeader';
+import { ChallongeImportCard } from '@pages/ChallongeImportCard';
 import { SCHEMA_VERSION } from '@services/transfer/schema';
 import {
   ImportError,
@@ -240,6 +241,7 @@ export function TransferPage() {
             )}
           </CardBody>
         </Card>
+        <ChallongeImportCard />
       </div>
     </>
   );

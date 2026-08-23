@@ -51,6 +51,19 @@ export interface ContestedResult {
   score: string;
 }
 
+/**
+ * Something the conversion had to point out.
+ *
+ * Carries a stable code as well as the wording, following the same convention
+ * as a validation issue: the command line prints the message, the interface
+ * translates the code. One note, one meaning, two presentations.
+ */
+export interface ReportNote {
+  code: string;
+  message: string;
+  values?: Record<string, string | number>;
+}
+
 /** A Challonge result the structure had no fixture for. */
 export interface UnplacedResult {
   challongeMatchId: string;
@@ -74,7 +87,7 @@ export interface TournamentReport {
   open: number;
   /** Results whose recorded winner disagrees with the recorded scores. */
   contested: ContestedResult[];
-  notes: string[];
+  notes: ReportNote[];
   skipped: boolean;
 }
 
@@ -163,10 +176,10 @@ interface Converted {
 
 function convertOne(source: ChallongeTournament, context: ConvertContext): Converted {
   const { options } = context;
-  const notes: string[] = [];
+  const notes: ReportNote[] = [];
   const label = source.url ?? source.id;
 
-  const skip = (reason: string, format: string): Converted => ({
+  const skip = (reason: ReportNote, format: string): Converted => ({
     skipped: true,
     report: {
       source: label,
@@ -193,7 +206,13 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
    * outright rather than imported partially.
    */
   if (source.group_stages_enabled === true) {
-    return skip('Group stages are not supported yet; import it manually.', 'group stages');
+    return skip(
+      {
+        code: 'group_stages',
+        message: 'Group stages are not supported yet; import it manually.',
+      },
+      'group stages',
+    );
   }
 
   const entrants = [...source.participants.map((entry) => entry.participant)].sort(
@@ -201,7 +220,10 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
   );
 
   if (entrants.length < 2) {
-    return skip('Fewer than two participants.', source.tournament_type);
+    return skip(
+      { code: 'too_few_participants', message: 'Fewer than two participants.' },
+      source.tournament_type,
+    );
   }
 
   const challongeMatches = source.matches.map((entry) => entry.match);
@@ -209,7 +231,14 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
   const format = toFormatConfig(source, entrants.length, matchFormat, notes);
 
   if (!format) {
-    return skip(`Unsupported Challonge type "${source.tournament_type}".`, source.tournament_type);
+    return skip(
+      {
+        code: 'unsupported_type',
+        message: `Unsupported Challonge type "${source.tournament_type}".`,
+        values: { type: source.tournament_type },
+      },
+      source.tournament_type,
+    );
   }
 
   // Participants, and the teams behind them.
@@ -329,7 +358,7 @@ function attachBestVariant(input: {
   challongeMatches: readonly ChallongeMatch[];
   entrants: Map<string, string>;
   options: MapOptions;
-  notes: string[];
+  notes: ReportNote[];
 }): Attached & { stage: Stage } {
   const { stage, notes } = input;
 
@@ -350,10 +379,13 @@ function attachBestVariant(input: {
   );
 
   if (best.seeding !== 'balanced') {
-    notes.push(
-      `Loser bracket drawn with the "${best.seeding}" drop order to match the source; ` +
+    notes.push({
+      code: 'loser_bracket_order',
+      message:
+        `Loser bracket drawn with the "${best.seeding}" drop order to match the source; ` +
         'it allows rematches the default arrangement avoids.',
-    );
+      values: { order: best.seeding },
+    });
   }
 
   return { ...best.result, stage: best.candidate };
@@ -619,7 +651,7 @@ function toFormatConfig(
   source: ChallongeTournament,
   participantCount: number,
   matchFormat: MatchFormat,
-  notes: string[],
+  notes: ReportNote[],
 ): FormatConfig | undefined {
   const type = source.tournament_type.toLowerCase();
 
@@ -635,7 +667,10 @@ function toFormatConfig(
   if (type.includes('double elimination')) {
     const modifier = source.grand_finals_modifier ?? '';
     if (modifier === 'skip') {
-      notes.push('Challonge skipped the grand final; imported with a single one.');
+      notes.push({
+        code: 'grand_final_skipped',
+        message: 'Challonge skipped the grand final; imported with a single one.',
+      });
     }
     return {
       kind: 'double_elimination',
@@ -647,7 +682,9 @@ function toFormatConfig(
 
   if (type.includes('round robin')) {
     const legs = inferLegs(source, participantCount);
-    if (legs === 2) notes.push('Detected a double round robin.');
+    if (legs === 2) {
+      notes.push({ code: 'double_round_robin', message: 'Detected a double round robin.' });
+    }
     return {
       kind: 'round_robin',
       legs,
@@ -659,7 +696,10 @@ function toFormatConfig(
 
   if (type.includes('swiss')) {
     const rounds = source.swiss_rounds ?? inferSwissRounds(source);
-    notes.push('Swiss pairings are recomputed by TournaCore and may differ from Challonge’s.');
+    notes.push({
+      code: 'swiss_recomputed',
+      message: 'Swiss pairings are recomputed here and may differ from Challonge’s.',
+    });
     return {
       kind: 'swiss',
       rounds: Math.max(1, rounds),

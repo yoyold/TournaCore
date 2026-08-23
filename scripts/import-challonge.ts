@@ -146,7 +146,7 @@ function printReport(report: TournamentReport): void {
   console.log(`\n${report.name}  [${report.source}]  ${status}`);
 
   if (report.skipped) {
-    for (const note of report.notes) console.log(`  ! ${note}`);
+    for (const note of report.notes) console.log(`  ! ${note.message}`);
     return;
   }
 
@@ -157,7 +157,7 @@ function printReport(report: TournamentReport): void {
       (report.open > 0 ? `, ${String(report.open)} still open` : ''),
   );
 
-  for (const note of report.notes) console.log(`  ! ${note}`);
+  for (const note of report.notes) console.log(`  ! ${note.message}`);
 
   if (report.contested.length > 0) {
     console.log(

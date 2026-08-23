@@ -314,6 +314,36 @@
       "future_version": "The file was written by a newer version. Please update TournaCore.",
       "schema_mismatch": "The file structure does not match. Nothing was applied.",
       "missing_migration": "There is no migration path for that schema version."
+    },
+    "challonge": {
+      "title": "Bring in from Challonge",
+      "hint": "TournaCore fetches nothing — no server, no outbound connections. Open the tournament data yourself and paste it here.",
+      "step1": "Open challonge.com/<slug>.json in a new tab.",
+      "step2": "Select all (Ctrl+A) and copy (Ctrl+C).",
+      "step3": "Paste it here, check it, bring it in.",
+      "data": "Challonge data",
+      "placeholder": "{\"tournament\": …}",
+      "name": "Tournament name",
+      "nameHint": "Only needed for public brackets — their data carries no name.",
+      "check": "Check",
+      "import": "Bring in",
+      "notJson": "That is not valid JSON. Did you copy the whole page?",
+      "unreadable": "The data could not be read.",
+      "skipped": "Will be skipped.",
+      "summary": "{{format}} · {{participants}} participants · {{placed}} of {{fixtures}} fixtures carried over",
+      "contested": "{{count}} result(s) where Challonge’s winner disagrees with the score. The winner is kept.",
+      "unplaced": "{{count}} result(s) with no matching fixture — that history will be missing.",
+      "acceptPartial": "I understand {{count}} result(s) will be missing.",
+      "imported": "{{count}} tournament(s) brought in.",
+      "note": {
+        "group_stages": "Group stages are not supported yet — this tournament is skipped.",
+        "too_few_participants": "Fewer than two participants.",
+        "unsupported_type": "Challonge type “{{type}}” is not supported.",
+        "grand_final_skipped": "Challonge skipped the grand final; a single one is used here.",
+        "double_round_robin": "Detected a double round robin.",
+        "swiss_recomputed": "Swiss pairings are recomputed here and may differ from Challonge’s.",
+        "loser_bracket_order": "Loser bracket drawn with the “{{order}}” arrangement to match the source. It allows rematches the default avoids."
+      }
     }
   },
   "routeError": {

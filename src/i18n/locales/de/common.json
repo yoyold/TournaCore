@@ -314,6 +314,36 @@
       "future_version": "Die Datei wurde mit einer neueren Version geschrieben. Bitte aktualisiere TournaCore.",
       "schema_mismatch": "Der Aufbau der Datei passt nicht. Es wurde nichts übernommen.",
       "missing_migration": "Für diese Schema-Version gibt es keinen Migrationspfad."
+    },
+    "challonge": {
+      "title": "Von Challonge übernehmen",
+      "hint": "TournaCore ruft nichts ab — kein Server, keine ausgehenden Verbindungen. Öffne die Turnierdaten selbst im Browser und füge sie hier ein.",
+      "step1": "Öffne challonge.com/<kürzel>.json in einem neuen Tab.",
+      "step2": "Alles markieren (Strg+A) und kopieren (Strg+C).",
+      "step3": "Hier einfügen, prüfen lassen, übernehmen.",
+      "data": "Challonge-Daten",
+      "placeholder": "{\"tournament\": …}",
+      "name": "Turniername",
+      "nameHint": "Nur bei öffentlichen Brackets nötig — deren Daten enthalten keinen Namen.",
+      "check": "Prüfen",
+      "import": "Übernehmen",
+      "notJson": "Das ist kein gültiges JSON. Hast du die ganze Seite kopiert?",
+      "unreadable": "Die Daten ließen sich nicht lesen.",
+      "skipped": "Wird übersprungen.",
+      "summary": "{{format}} · {{participants}} Teilnehmer · {{placed}} von {{fixtures}} Partien übernommen",
+      "contested": "{{count}} Ergebnis(se), bei denen Challonges Sieger nicht zum Spielstand passt. Der Sieger gilt.",
+      "unplaced": "{{count}} Ergebnis(se) ohne passende Partie — diese Historie fehlt.",
+      "acceptPartial": "Mir ist klar, dass {{count}} Ergebnis(se) fehlen werden.",
+      "imported": "{{count}} Turnier(e) übernommen.",
+      "note": {
+        "group_stages": "Gruppenphasen werden noch nicht unterstützt — dieses Turnier wird übersprungen.",
+        "too_few_participants": "Weniger als zwei Teilnehmer.",
+        "unsupported_type": "Challonge-Typ „{{type}}\" wird nicht unterstützt.",
+        "grand_final_skipped": "Challonge hat das Grand Final übersprungen; hier steht ein einzelnes.",
+        "double_round_robin": "Hin- und Rückrunde erkannt.",
+        "swiss_recomputed": "Schweizer Paarungen werden hier neu berechnet und können von Challonge abweichen.",
+        "loser_bracket_order": "Verliererbaum mit der Zuordnung „{{order}}\" gezeichnet, damit er zur Vorlage passt. Sie lässt Wiederholungen zu, die die Voreinstellung vermeidet."
+      }
     }
   },
   "routeError": {

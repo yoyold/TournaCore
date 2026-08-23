@@ -288,7 +288,8 @@ describe('formats', () => {
     );
 
     expect(reports[0]?.format).toBe('swiss');
-    expect(reports[0]?.notes.join(' ')).toContain('recomputed');
+    // Checked by code rather than wording, so a reworded note does not break it.
+    expect(reports[0]?.notes.map((note) => note.code)).toContain('swiss_recomputed');
   });
 });
 
@@ -313,7 +314,8 @@ describe('what it refuses', () => {
     const { reports } = convert(tournament({ type: 'free for all', players: ['Alpha', 'Beta'] }));
 
     expect(reports[0]?.skipped).toBe(true);
-    expect(reports[0]?.notes.join(' ')).toContain('Unsupported');
+    expect(reports[0]?.notes[0]?.code).toBe('unsupported_type');
+    expect(reports[0]?.notes[0]?.values).toEqual({ type: 'free for all' });
   });
 
   it('skips a tournament nobody entered', () => {

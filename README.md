@@ -42,10 +42,18 @@ npm run dev
 
 ## Importing from Challonge
 
-Existing tournaments can be brought across with a conversion script. It runs
-offline and produces an ordinary export file, which then goes in through the
-same validated import as any other — the application itself never talks to
-Challonge, and no API key ever reaches the browser.
+Under **Import / Export** there is a box to paste a Challonge tournament into.
+Open `https://challonge.com/<slug>.json` in a tab, copy the lot, paste it in, and
+the conversion reports what it found before anything is written.
+
+There is no URL field, and there will not be one: the application makes no
+outbound requests — its Content Security Policy forbids them and a test enforces
+it — and Challonge sends no cross-origin headers and sits behind bot protection,
+so fetching from here could not work regardless. Pasting leaves the fetching
+where it already works: a browser tab you opened.
+
+The same conversion is available as a script, which is what private tournaments
+and bulk migrations need.
 
 For a **public** tournament no key is needed at all. Open
 `https://challonge.com/<slug>.json` in a browser, save it, and convert that:
