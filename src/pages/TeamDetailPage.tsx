@@ -56,6 +56,15 @@ export function TeamDetailPage() {
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
         {team.countryCode !== undefined && <FlagIcon countryCode={team.countryCode} width={26} />}
+        {/*
+          Names the club competed under before. Shown because the history below
+          spans them: without this, results from those years look misfiled.
+        */}
+        {team.formerNames !== undefined && team.formerNames.length > 0 && (
+          <span className="text-xs text-fg-muted">
+            {t('teams.merge.formerNames')}: {team.formerNames.join(', ')}
+          </span>
+        )}
         {team.archived && (
           <span className="flex items-center gap-1.5 rounded-full bg-hover px-2 py-0.5 text-xs text-fg-muted">
             <Archive size={12} aria-hidden />

@@ -274,7 +274,21 @@
     "deleteTitle": "Delete team?",
     "deleteMessage": "\"{{name}}\" will be permanently removed from the team database.",
     "deleteDetail": "The team appears in {{count}} tournaments, which will show \"Unknown team\" afterwards. Archiving is the gentler option.",
-    "deleteConfirm": "Delete permanently"
+    "deleteConfirm": "Delete permanently",
+    "merge": {
+      "title": "Merge teams",
+      "hint": "Where the same club competed under different names over the years, fold them together here. Every result is kept and counts towards “{{name}}” from now on.",
+      "pick": "Which team should be folded into this one?",
+      "none": "Choose a team …",
+      "preview": "{{count}} tournament entr(ies) move from “{{source}}” to “{{target}}”. “{{source}}” is kept as a former name.",
+      "action": "Merge",
+      "done": "“{{source}}” is now part of “{{target}}”.",
+      "confirmTitle": "Merge these teams?",
+      "confirmMessage": "“{{source}}” is folded into “{{target}}” and disappears from the team list.",
+      "confirmDetail": "{{count}} tournament entr(ies) will be moved. No result is changed.",
+      "confirmAction": "Merge for good",
+      "formerNames": "Formerly"
+    }
   },
   "statistics": {
     "tab": {

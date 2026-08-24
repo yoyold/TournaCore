@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@components/ui/ConfirmDialog';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { PageHeader } from '@components/ui/PageHeader';
 import { asId, newTeamId, now, type Team, type TeamId } from '@models/index';
+import { TeamMergeCard } from '@pages/TeamMergeCard';
 import { deriveTag } from '@services/tournament/parseParticipants';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
@@ -214,6 +215,8 @@ function TeamForm({ existing }: { existing: Team | undefined }) {
           </Field>
         </CardBody>
       </Card>
+
+      {existing && <TeamMergeCard team={existing} />}
 
       {confirmingDelete && existing && (
         <ConfirmDialog

@@ -32,6 +32,7 @@ const teamSchema = z.object({
   countryCode: z.string().optional(),
   description: z.string().optional(),
   foundedAt: z.string().optional(),
+  formerNames: z.array(z.string()).optional(),
   socials: z.array(socialLink).default([]),
   archived: z.boolean().default(false),
   createdAt: isoString,

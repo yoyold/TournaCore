@@ -120,9 +120,17 @@ export function mapChallongeTournaments(
   sources: readonly ChallongeTournament[],
   options: MapOptions,
 ): MapResult {
-  const teams = new Map<string, Team>(
-    options.existingTeams.map((team) => [team.name.toLowerCase(), team]),
-  );
+  /*
+   * Teams are found by any name they are known to have used, not just the
+   * current one. A club that was renamed still played the older tournaments
+   * under the old name, and matching only the current one would create a second
+   * team for the same club — exactly what merging them was meant to undo.
+   */
+  const teams = new Map<string, Team>();
+  for (const team of options.existingTeams) {
+    for (const former of team.formerNames ?? []) teams.set(former.toLowerCase(), team);
+    teams.set(team.name.toLowerCase(), team);
+  }
   const games = new Map<string, Game>(
     options.existingGames.map((game) => [game.name.toLowerCase(), game]),
   );

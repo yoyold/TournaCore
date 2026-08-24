@@ -58,6 +58,14 @@ export interface Team extends Timestamps {
   countryCode?: string;
   description?: string;
   foundedAt?: IsoDate;
+  /**
+   * Names this team competed under before.
+   *
+   * A club that renames itself is still the same club: its history was recorded
+   * under the old name, and an import arriving under one should find its way to
+   * this team rather than creating a second. Filled when two teams are merged.
+   */
+  formerNames?: string[];
   socials: SocialLink[];
   /**
    * Archived teams are hidden from pickers but never deleted.

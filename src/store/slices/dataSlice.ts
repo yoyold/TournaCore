@@ -23,6 +23,7 @@ import {
   db,
   writeMeta,
 } from '@services/db';
+import { mergeTeams as merge } from '@services/team/mergeTeams';
 
 import type { AssembledTournament } from '@services/tournament/assembleTournament';
 import type { ImportMode, TransferData } from '@services/transfer/transfer';
@@ -70,6 +71,13 @@ export interface DataState {
    * rather than a crash.
    */
   removeTeam: (id: TeamId) => Promise<void>;
+  /**
+   * Folds one team into another, keeping every result.
+   *
+   * Only which team a tournament entry points at changes, so the merged history
+   * appears under one name without a single match being rewritten.
+   */
+  mergeTeams: (sourceId: TeamId, targetId: TeamId) => Promise<void>;
 }
 
 function index<TId extends string, TEntity extends { id: TId }>(
@@ -298,6 +306,33 @@ export const useDataStore = create<DataState>()((set, get) => {
       await guard(async () => {
         await teamRepository.remove(id);
         set((state) => ({ teams: omit(state.teams, [id]) }));
+      });
+    },
+
+    mergeTeams: async (sourceId, targetId) => {
+      const state = get();
+      const source = state.teams[sourceId];
+      const target = state.teams[targetId];
+      if (!source || !target || sourceId === targetId) return;
+
+      await guard(async () => {
+        const result = merge({
+          source,
+          target,
+          tournaments: Object.values(state.tournaments),
+          timestamp: now(),
+        });
+
+        await teamRepository.put(result.team);
+        await tournamentRepository.putMany(result.tournaments);
+        // Removed last: until the entries have moved, deleting it would leave
+        // them pointing at a team that is no longer there.
+        await teamRepository.remove(sourceId);
+
+        set((current) => ({
+          teams: omit({ ...current.teams, [result.team.id]: result.team }, [sourceId]),
+          tournaments: { ...current.tournaments, ...index(result.tournaments) },
+        }));
       });
     },
 

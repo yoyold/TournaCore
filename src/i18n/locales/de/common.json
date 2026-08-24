@@ -274,7 +274,21 @@
     "deleteTitle": "Team löschen?",
     "deleteMessage": "„{{name}}“ wird dauerhaft aus der Teamdatenbank entfernt.",
     "deleteDetail": "Das Team ist in {{count}} Turnieren eingetragen. Dort erscheint danach „Unbekanntes Team“. Archivieren wäre die schonendere Wahl.",
-    "deleteConfirm": "Endgültig löschen"
+    "deleteConfirm": "Endgültig löschen",
+    "merge": {
+      "title": "Teams zusammenführen",
+      "hint": "Hat derselbe Verein über die Jahre unter verschiedenen Namen gespielt, kannst du ihn hier zusammenführen. Alle Ergebnisse bleiben erhalten und zählen künftig für „{{name}}\".",
+      "pick": "Welches Team soll aufgehen in diesem?",
+      "none": "Team wählen …",
+      "preview": "{{count}} Turniereintrag/-einträge von „{{source}}\" wandern zu „{{target}}\". „{{source}}\" wird danach als früherer Name geführt.",
+      "action": "Zusammenführen",
+      "done": "„{{source}}\" ist jetzt Teil von „{{target}}\".",
+      "confirmTitle": "Teams zusammenführen?",
+      "confirmMessage": "„{{source}}\" geht in „{{target}}\" auf und verschwindet aus der Teamliste.",
+      "confirmDetail": "{{count}} Turniereintrag/-einträge werden übertragen. Kein Ergebnis wird geändert.",
+      "confirmAction": "Endgültig zusammenführen",
+      "formerNames": "Früher auch"
+    }
   },
   "statistics": {
     "tab": {

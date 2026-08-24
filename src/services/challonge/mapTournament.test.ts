@@ -592,3 +592,39 @@ describe('group stages', () => {
     expect(data.tournaments).toHaveLength(0);
   });
 });
+
+describe('teams that changed their name', () => {
+  /**
+   * The point of merging two teams: a club renamed itself, and its older
+   * tournaments were played under the old name. An import arriving under that
+   * name has to find its way to the merged team rather than creating a second.
+   */
+  it('recognises a team by a name it used to compete under', () => {
+    const merged = {
+      id: 'merged',
+      name: 'Vici Gaming',
+      tag: 'VG',
+      formerNames: ['Quantic Gaming'],
+      socials: [],
+      archived: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as unknown as Parameters<typeof mapChallongeTournaments>[1]['existingTeams'][number];
+
+    const { data } = mapChallongeTournaments(
+      parseChallonge(
+        tournament({
+          players: ['Quantic Gaming', 'Beta'],
+          matches: [{ id: '1', player1: '1', player2: '2', winner: '1', order: 1 }],
+        }),
+      ),
+      { ...options(), existingTeams: [merged] },
+    );
+
+    // Only Beta is new: the old name resolved to the team that already exists.
+    expect(data.teams.map((team) => team.name)).toEqual(['Beta']);
+
+    const entrant = data.tournaments[0]?.participants[0];
+    expect(entrant?.teamId).toBe('merged');
+  });
+});
