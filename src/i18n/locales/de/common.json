@@ -129,7 +129,20 @@
     "band": {
       "winner": "Winner Bracket",
       "loser": "Loser Bracket"
-    }
+    },
+    "arrangement": "Bracket-Anordnung",
+    "arrangementOption": {
+      "standard": "Standard",
+      "mirrored": "Gespiegelt"
+    },
+    "dropOrder": "Verliererbaum",
+    "dropOrderOption": {
+      "balanced": "Ausgeglichen",
+      "alternating": "Abwechselnd (Challonge)",
+      "reversed": "Umgekehrt",
+      "standard": "Der Reihe nach"
+    },
+    "arrangementHint": "Nur ändern, wenn Paarungen falsch aussehen. Ergebnisse merken sich ihre Position im Baum, nicht die Teams — die Umschaltung ordnet sie neu zu und ist jederzeit umkehrbar."
   },
   "tournaments": {
     "createDemo": "Demo-Turnier anlegen",

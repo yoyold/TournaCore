@@ -14,6 +14,7 @@ import { PageHeader } from '@components/ui/PageHeader';
 import { isBracketFormat } from '@domain/formats/registry';
 import { useDerivedTournament } from '@hooks/useDerivedTournament';
 import { asId, type Match, type MatchId, type TournamentId } from '@models/index';
+import { BracketArrangementControl } from '@pages/BracketArrangementControl';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
@@ -176,16 +177,19 @@ export function TournamentDetailPage() {
               groups get their table plus the fixture list instead.
             */}
             {isBracketFormat(stage.stage.format.kind) ? (
-              <BracketCanvas
-                structure={stage.structure}
-                matches={stage.resolved.matches}
-                storedMatches={storedMatches}
-                teamOf={teamOf}
-                selectedMatchId={selectedMatch}
-                onSelectMatch={(match: ResolvedMatch) => {
-                  setSelectedMatch((current) => (current === match.id ? undefined : match.id));
-                }}
-              />
+              <>
+                <BracketArrangementControl stage={stage.stage} />
+                <BracketCanvas
+                  structure={stage.structure}
+                  matches={stage.resolved.matches}
+                  storedMatches={storedMatches}
+                  teamOf={teamOf}
+                  selectedMatchId={selectedMatch}
+                  onSelectMatch={(match: ResolvedMatch) => {
+                    setSelectedMatch((current) => (current === match.id ? undefined : match.id));
+                  }}
+                />
+              </>
             ) : (
               <>
                 {stage.groupStandings.length > 0 ? (
