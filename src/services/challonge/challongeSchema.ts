@@ -58,6 +58,8 @@ export const challongeMatchSchema = z.looseObject({
  */
 export const challongeGroupSchema = z.looseObject({
   name: z.string().optional(),
+  /** A group is its own little tournament, and not always a round robin. */
+  type: z.string().optional(),
   /** Places that carry over from this group into the main bracket. */
   advanceCount: numeric.optional(),
   participants: z.array(z.looseObject({ participant: challongeParticipantSchema })).default([]),

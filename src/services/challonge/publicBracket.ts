@@ -46,7 +46,10 @@ const matchSchema = z.looseObject({
 const groupSchema = z.looseObject({
   name: z.string().nullable().optional(),
   tournament: z
-    .looseObject({ participant_count_to_advance: z.number().nullable().optional() })
+    .looseObject({
+      tournament_type: z.string().optional(),
+      participant_count_to_advance: z.number().nullable().optional(),
+    })
     .optional(),
   matches_by_round: z.record(z.string(), z.array(matchSchema)).optional(),
 });
@@ -89,6 +92,7 @@ export function fromPublicBracket(bracket: PublicBracket, name?: string): Challo
     const groupMatches = Object.values(group.matches_by_round ?? {}).flat();
     return {
       ...(group.name ? { name: group.name } : {}),
+      ...(group.tournament?.tournament_type ? { type: group.tournament.tournament_type } : {}),
       ...(group.tournament?.participant_count_to_advance != null
         ? { advanceCount: group.tournament.participant_count_to_advance }
         : {}),

@@ -86,6 +86,11 @@ Worth knowing before you start:
   exactly as they were drawn rather than recomputed. This needs the public
   bracket page: the API announces group stages without returning them, and a
   tournament missing its whole first phase is refused rather than half-imported.
+- **A qualifying round is not a group.** Challonge lets a "group" be a knockout,
+  and one round of pairings with the winners going through is a play-in rather
+  than a table. It converts as one group per pairing, so only the fixtures that
+  were actually played exist. A qualifier running over several rounds is refused
+  rather than flattened.
 - **The loser bracket draw is detected, not assumed.** Which winner bracket
   casualty drops onto which survivor decides who meets whom after a defeat, and
   bracket software does not agree on the rule. Each supported arrangement is

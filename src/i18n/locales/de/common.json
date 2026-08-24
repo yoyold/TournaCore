@@ -371,7 +371,10 @@
         "loser_bracket_order": "Verliererbaum mit der Zuordnung „{{order}}\" gezeichnet, damit er zur Vorlage passt. Sie lässt Wiederholungen zu, die die Voreinstellung vermeidet.",
         "group_stages_missing": "Dieses Turnier hat eine Gruppenphase, die Daten enthalten sie aber nicht. Nimm die öffentliche Bracket-Seite (challonge.com/<kürzel>.json).",
         "group_stage_imported": "Als Gruppenphase mit {{groups}} Gruppen plus anschließendem Bracket übernommen.",
-        "playoff_seeding": "Qualifikanten ziehen in Rangfolge ins Bracket ein, so wie in der Vorlage."
+        "playoff_seeding": "Qualifikanten ziehen in Rangfolge ins Bracket ein, so wie in der Vorlage.",
+        "qualifying_bracket": "Die Qualifikationsphase ist ein Bracket über mehrere Runden — das lässt sich noch nicht abbilden.",
+        "playoff_seeding_recorded": "Das Bracket behält die Setzung, die in der Vorlage steht, statt sie aus den Qualifikationstabellen abzuleiten.",
+        "play_in_imported": "Als Qualifikationsrunde mit {{groups}} Paarungen plus anschließendem Bracket übernommen."
       }
     }
   },

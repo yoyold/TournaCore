@@ -24,7 +24,7 @@ import {
 } from '@models/index';
 import { uniqueSlug } from '@utils/slug';
 
-import type { ChallongeMatch, ChallongeTournament } from './challongeSchema';
+import type { ChallongeMatch, ChallongeParticipant, ChallongeTournament } from './challongeSchema';
 import type { StructuralMatch } from '@domain/formats/types';
 import type { TransferData } from '@services/transfer/transfer';
 
@@ -233,9 +233,12 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
    * appears under one identifier in its group and a different one in the
    * bracket, linked only by name — so names are what identity is built on here.
    */
-  const groupMembers = source.groups.map((group) =>
-    [...group.participants.map((entry) => entry.participant)].sort(bySeed),
-  );
+  const preliminary = readPreliminaryPhase(source);
+  if ('unsupported' in preliminary) {
+    return skip(preliminary.unsupported, source.tournament_type);
+  }
+
+  const groupMembers = preliminary.members;
   const hasGroups = groupMembers.some((members) => members.length > 0);
 
   const entrants = hasGroups
@@ -324,12 +327,17 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     const groupStageId = asId<StageId>(options.newId());
     let slot = 0;
     const groups = groupMembers.map((members) => members.map(() => (slot += 1)));
-    const advance = source.groups[0]?.advanceCount ?? 2;
+    const advance = preliminary.advance;
 
     stages.push({
       id: groupStageId,
       tournamentId,
-      name: 'Group Stage',
+      /*
+       * Named for what it is. The fixtures of a play-in are pairings, and the
+       * machinery that carries them is the group machinery — but calling the
+       * phase a group stage would misdescribe the event.
+       */
+      name: preliminary.playIn ? 'Qualification' : 'Group Stage',
       order: 0,
       format: {
         kind: 'group_stage',
@@ -419,6 +427,18 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     allEntrants.set(entrant.id, entrant.name ?? entrant.display_name ?? entrant.id);
   }
 
+  /*
+   * The bracket's own entrants, in the order the source seeded them. Only useful
+   * where a phase precedes it: without one, the bracket seeds straight from the
+   * entry list and there is nothing to reconstruct.
+   */
+  const recordedOrder = hasGroups
+    ? [...source.participants.map((entry) => entry.participant)]
+        .sort(bySeed)
+        .map((entrant) => byChallongeId.get(entrant.id))
+        .filter((id): id is ParticipantId => id !== undefined)
+    : [];
+
   const attached = attachBestVariant({
     tournament,
     stages,
@@ -427,12 +447,15 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     entrants: allEntrants,
     options,
     notes,
+    ...(recordedOrder.length > 0 ? { qualifierOrder: recordedOrder } : {}),
   });
 
   if (hasGroups) {
     notes.push({
-      code: 'group_stage_imported',
-      message: `Imported as a group stage of ${String(groupMembers.length)} feeding a bracket.`,
+      code: preliminary.playIn ? 'play_in_imported' : 'group_stage_imported',
+      message: preliminary.playIn
+        ? `Imported as a qualifying round of ${String(groupMembers.length)} pairings feeding a bracket.`
+        : `Imported as a group stage of ${String(groupMembers.length)} feeding a bracket.`,
       values: { groups: groupMembers.length },
     });
   }
@@ -445,7 +468,12 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     report: {
       source: label,
       name: source.name,
-      format: hasGroups ? 'group_stage' : format.kind,
+      /*
+       * A play-in is reported by the bracket it feeds, with the note saying what
+       * preceded it. Calling it a group stage would name the machinery rather
+       * than the event.
+       */
+      format: hasGroups && !preliminary.playIn ? 'group_stage' : format.kind,
       participants: participants.length,
       fixtures: attached.fixtures,
       placed: attached.placed,
@@ -456,6 +484,66 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
       skipped: false,
     },
   };
+}
+
+/**
+ * The shape of whatever phase precedes the main bracket.
+ *
+ * Challonge calls it a group stage, but a group is its own little tournament and
+ * need not be a round robin. A knockout group with a single round is not a group
+ * at all — it is a play-in: a set of pairings from which the winner goes
+ * through. That is the same thing as one group per pairing with one qualifier
+ * each, so it converts exactly, using the machinery groups already have.
+ *
+ * A knockout group over several rounds is a real bracket and is refused rather
+ * than flattened into something it is not.
+ */
+function readPreliminaryPhase(
+  source: ChallongeTournament,
+):
+  | { members: ChallongeParticipant[][]; advance: number; playIn: boolean }
+  | { unsupported: ReportNote } {
+  if (source.groups.length === 0) return { members: [], advance: 0, playIn: false };
+
+  const knockout = source.groups.some((group) => (group.type ?? '').includes('elimination'));
+  if (!knockout) {
+    return {
+      members: source.groups.map((group) =>
+        [...group.participants.map((entry) => entry.participant)].sort(bySeed),
+      ),
+      advance: source.groups[0]?.advanceCount ?? 2,
+      playIn: false,
+    };
+  }
+
+  const pairs: ChallongeParticipant[][] = [];
+
+  for (const group of source.groups) {
+    const byId = new Map(
+      group.participants.map((entry) => [entry.participant.id, entry.participant]),
+    );
+    const rounds = new Set(group.matches.map((entry) => entry.match.round ?? 1));
+
+    if (rounds.size > 1) {
+      return {
+        unsupported: {
+          code: 'qualifying_bracket',
+          message:
+            'The qualifying phase is a bracket of several rounds, which cannot be ' +
+            'represented yet.',
+        },
+      };
+    }
+
+    for (const entry of group.matches) {
+      const a = byId.get(entry.match.player1_id ?? '');
+      const b = byId.get(entry.match.player2_id ?? '');
+      if (a && b) pairs.push([a, b]);
+    }
+  }
+
+  // Each pairing sends exactly one participant on.
+  return { members: pairs, advance: 1, playIn: true };
 }
 
 const bySeed = (a: { seed?: number | undefined }, b: { seed?: number | undefined }): number =>
@@ -494,10 +582,12 @@ function attachBestVariant(input: {
   entrants: Map<string, string>;
   options: MapOptions;
   notes: ReportNote[];
+  /** The order the source itself put the qualifiers in, if it recorded one. */
+  qualifierOrder?: ParticipantId[];
 }): Attached & { stages: Stage[] } {
-  const { stages, notes } = input;
+  const { stages, notes, qualifierOrder, options } = input;
 
-  const candidates = variantsOf(stages);
+  const candidates = variantsOf(stages, qualifierOrder, options.newId);
   const attempts = candidates.map((candidate) => ({
     candidate,
     result: attachResults({ ...input, stages: candidate.stages }),
@@ -525,6 +615,15 @@ function attachBestVariant(input: {
     });
   }
 
+  if (best.candidate.manualSeeding === true) {
+    notes.push({
+      code: 'playoff_seeding_recorded',
+      message:
+        'The bracket keeps the line-up the source recorded rather than deriving it ' +
+        'from the qualifying tables.',
+    });
+  }
+
   return { ...best.result, stages: best.candidate.stages };
 }
 
@@ -532,6 +631,7 @@ interface Variant {
   stages: Stage[];
   dropOrder?: DoubleEliminationConfig['loserBracketSeeding'];
   seedingOrder?: SeedingRule['order'];
+  manualSeeding?: boolean;
 }
 
 /**
@@ -541,7 +641,11 @@ interface Variant {
  * loser bracket drop order, and — where a bracket is fed by group tables — the
  * order the qualifiers enter it in.
  */
-function variantsOf(stages: readonly Stage[]): Variant[] {
+function variantsOf(
+  stages: readonly Stage[],
+  qualifierOrder: ParticipantId[] | undefined,
+  newId: () => string,
+): Variant[] {
   const last = stages.at(-1);
   const bracket = last?.format;
 
@@ -583,6 +687,34 @@ function variantsOf(stages: readonly Stage[]): Variant[] {
         ...(dropOrder !== undefined ? { dropOrder } : {}),
         ...(seedingOrder !== undefined ? { seedingOrder } : {}),
       });
+    }
+  }
+
+  /*
+   * Who entered the bracket in which position can be a recorded fact rather than
+   * a derivation. Where a source re-seeded its qualifiers by hand, no ordering
+   * rule reproduces it, and the line-up it wrote down is the only truth
+   * available.
+   */
+  if (qualifierOrder !== undefined && qualifierOrder.length > 0 && stages.length > 0) {
+    for (const base of [...variants]) {
+      const withManual = base.stages.map((stage, index) =>
+        index === base.stages.length - 1
+          ? {
+              ...stage,
+              entrySeeding: [
+                {
+                  id: asId<SeedingRule['id']>(newId()),
+                  source: { kind: 'manual' as const, participantIds: [...qualifierOrder] },
+                  targetSlots: { from: 1, to: qualifierOrder.length },
+                  order: 'as_ranked' as const,
+                },
+              ],
+            }
+          : stage,
+      );
+
+      variants.push({ ...base, stages: withManual, manualSeeding: true });
     }
   }
 

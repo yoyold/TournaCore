@@ -628,3 +628,129 @@ describe('teams that changed their name', () => {
     expect(entrant?.teamId).toBe('merged');
   });
 });
+
+/**
+ * Challonge calls this a group stage, but a group is its own little tournament
+ * and need not be a round robin. One knockout round with half the field going
+ * through is a play-in, and reading it as a round robin builds a table of
+ * fixtures that were never played.
+ */
+const WITH_PLAY_IN = {
+  tournament: {
+    id: 4248739,
+    name: 'Play-in Cup',
+    url: 'play-in-cup',
+    tournament_type: 'single elimination',
+    state: 'complete',
+    group_stages_enabled: true,
+    // The two survivors, renumbered for the bracket.
+    participants: [
+      { participant: { id: 901, name: 'Alpha', seed: 1 } },
+      { participant: { id: 902, name: 'Gamma', seed: 2 } },
+    ],
+    matches: [
+      {
+        match: {
+          id: 500,
+          state: 'complete',
+          player1_id: 901,
+          player2_id: 902,
+          winner_id: 901,
+          scores_csv: '2-1',
+          suggested_play_order: 1,
+        },
+      },
+    ],
+    groups: [
+      {
+        name: 'Group A',
+        type: 'single elimination',
+        advanceCount: 2,
+        participants: [
+          { participant: { id: 10, name: 'Alpha', seed: 1 } },
+          { participant: { id: 11, name: 'Beta', seed: 4 } },
+          { participant: { id: 12, name: 'Gamma', seed: 2 } },
+          { participant: { id: 13, name: 'Delta', seed: 3 } },
+        ],
+        matches: [playIn(100, 10, 11, 10, 1), playIn(101, 12, 13, 12, 2)],
+      },
+    ],
+  },
+};
+
+function playIn(id: number, p1: number, p2: number, winner: number, order: number) {
+  return {
+    match: {
+      id,
+      round: 1,
+      state: 'complete',
+      player1_id: p1,
+      player2_id: p2,
+      winner_id: winner,
+      loser_id: winner === p1 ? p2 : p1,
+      scores_csv: '2-0',
+      suggested_play_order: order,
+    },
+  };
+}
+
+describe('a knockout qualifying round', () => {
+  it('becomes one group per pairing rather than a round robin', () => {
+    const { data } = convert(WITH_PLAY_IN);
+    const format = data.stages[0]?.format;
+
+    // Two pairings, so two groups of two — not one table of four.
+    expect(format).toMatchObject({ kind: 'group_stage', groupCount: 2, distribution: 'manual' });
+    expect((format as { groups?: number[][] }).groups).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
+  it('generates only the fixtures that were played', () => {
+    const { reports } = convert(WITH_PLAY_IN);
+
+    // Two play-in matches and one final: a round robin would have invented three
+    // more that never happened.
+    expect(reports[0]?.fixtures).toBe(3);
+    expect(reports[0]?.placed).toBe(3);
+    expect(reports[0]?.open).toBe(0);
+    expect(reports[0]?.unplaced).toEqual([]);
+  });
+
+  it('sends exactly one participant on from each pairing', () => {
+    const { data } = convert(WITH_PLAY_IN);
+    const rule = data.stages[1]?.entrySeeding[0];
+
+    // Either derived from the tables or taken as recorded, but never more than
+    // the two who actually won.
+    expect(rule?.targetSlots).toEqual({ from: 1, to: 2 });
+  });
+
+  /**
+   * Where a source re-seeded its qualifiers by hand, no ordering rule
+   * reproduces it — the line-up it wrote down is the only truth available.
+   */
+  it('can keep the line-up the source recorded', () => {
+    const { data, reports } = convert(WITH_PLAY_IN);
+    const rule = data.stages[1]?.entrySeeding[0];
+
+    const usedRecorded = rule?.source.kind === 'manual';
+    const noted = reports[0]?.notes.some((note) => note.code === 'playoff_seeding_recorded');
+    expect(usedRecorded).toBe(noted);
+  });
+
+  it('refuses a qualifying phase of several rounds rather than flattening it', () => {
+    const deeper = structuredClone(WITH_PLAY_IN);
+    const extra = structuredClone(deeper.tournament.groups[0]!.matches[0]!);
+    extra.match.id = 199;
+    extra.match.round = 2;
+    deeper.tournament.groups[0]!.matches.push(extra);
+
+    const { reports, data } = convert(deeper);
+
+    expect(reports[0]?.skipped).toBe(true);
+    expect(reports[0]?.notes[0]?.code).toBe('qualifying_bracket');
+    expect(data.tournaments).toHaveLength(0);
+  });
+});
