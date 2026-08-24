@@ -4,6 +4,7 @@ import {
   DEFAULT_SWISS_TIEBREAKERS,
   DEFAULT_TIEBREAKERS,
   asId,
+  type DoubleEliminationConfig,
   type FormatConfig,
   type Game,
   type GameId,
@@ -14,6 +15,7 @@ import {
   type MatchWinner,
   type Participant,
   type ParticipantId,
+  type SeedingRule,
   type Stage,
   type StageId,
   type Team,
@@ -200,24 +202,37 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
   });
 
   /*
-   * A Challonge group phase gives every participant a second set of identifiers
-   * and splits the event into two linked brackets. Converting half of it would
-   * produce a tournament that looks complete and is not, so it is refused
-   * outright rather than imported partially.
+   * A group phase arrives as a set of self-contained little tournaments. The
+   * public bracket payload carries them; the API reports only that they exist,
+   * and importing the bracket alone would produce a tournament that looks
+   * complete and is missing its whole first phase.
    */
-  if (source.group_stages_enabled === true) {
+  if (source.group_stages_enabled === true && source.groups.length === 0) {
     return skip(
       {
-        code: 'group_stages',
-        message: 'Group stages are not supported yet; import it manually.',
+        code: 'group_stages_missing',
+        message:
+          'This tournament has group stages, but the data does not include them. ' +
+          'Use the public bracket page (challonge.com/<slug>.json) instead.',
       },
       'group stages',
     );
   }
 
-  const entrants = [...source.participants.map((entry) => entry.participant)].sort(
-    (a, b) => (a.seed ?? Number.MAX_SAFE_INTEGER) - (b.seed ?? Number.MAX_SAFE_INTEGER),
+  /*
+   * A group phase and the bracket after it are separate little tournaments to
+   * Challonge, each numbering its own participants. The same club therefore
+   * appears under one identifier in its group and a different one in the
+   * bracket, linked only by name — so names are what identity is built on here.
+   */
+  const groupMembers = source.groups.map((group) =>
+    [...group.participants.map((entry) => entry.participant)].sort(bySeed),
   );
+  const hasGroups = groupMembers.some((members) => members.length > 0);
+
+  const entrants = hasGroups
+    ? groupMembers.flat()
+    : [...source.participants.map((entry) => entry.participant)].sort(bySeed);
 
   if (entrants.length < 2) {
     return skip(
@@ -226,10 +241,11 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     );
   }
 
-  const challongeMatches = source.matches.map((entry) => entry.match);
-  const matchFormat = inferMatchFormat(challongeMatches);
-  const format = toFormatConfig(source, entrants.length, matchFormat, notes);
+  const groupMatches = source.groups.flatMap((group) => group.matches.map((entry) => entry.match));
+  const mainMatches = source.matches.map((entry) => entry.match);
+  const matchFormat = inferMatchFormat([...groupMatches, ...mainMatches]);
 
+  const format = toFormatConfig(source, entrants.length, matchFormat, notes);
   if (!format) {
     return skip(
       {
@@ -243,6 +259,8 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
 
   // Participants, and the teams behind them.
   const byChallongeId = new Map<string, ParticipantId>();
+  const byName = new Map<string, ParticipantId>();
+
   const participants: Participant[] = entrants.map((entrant, index) => {
     const name = (entrant.name ?? entrant.display_name ?? `Team ${String(index + 1)}`).trim();
     const key = name.toLowerCase();
@@ -269,32 +287,109 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
       status: 'active',
     };
     byChallongeId.set(entrant.id, participant.id);
+    byName.set(key, participant.id);
     return participant;
   });
 
+  // The bracket after a group phase numbers the same people differently.
+  for (const entry of source.participants) {
+    const entrant = entry.participant;
+    const key = (entrant.name ?? entrant.display_name ?? '').trim().toLowerCase();
+    const existing = byName.get(key);
+    if (existing !== undefined) byChallongeId.set(entrant.id, existing);
+  }
+
   const gameId = resolveGame(source.game_name ?? undefined, context);
   const tournamentId = asId<TournamentId>(options.newId());
-  const stageId = asId<StageId>(options.newId());
   const slug = uniqueSlug(source.name, context.slugs);
   context.slugs.push(slug);
 
-  const stage: Stage = {
-    id: stageId,
-    tournamentId,
-    name: stageNameFor(format.kind),
-    order: 0,
-    format,
-    entrySeeding: [
-      {
-        id: asId<Stage['entrySeeding'][number]['id']>(options.newId()),
-        source: { kind: 'participants' },
-        targetSlots: { from: 1, to: participants.length },
-        order: 'as_ranked',
+  const newRule = (rule: Omit<SeedingRule, 'id'>): SeedingRule => ({
+    id: asId<SeedingRule['id']>(options.newId()),
+    ...rule,
+  });
+
+  const stages: Stage[] = [];
+  const matchesByStage: ChallongeMatch[][] = [];
+
+  if (hasGroups) {
+    const groupStageId = asId<StageId>(options.newId());
+    let slot = 0;
+    const groups = groupMembers.map((members) => members.map(() => (slot += 1)));
+    const advance = source.groups[0]?.advanceCount ?? 2;
+
+    stages.push({
+      id: groupStageId,
+      tournamentId,
+      name: 'Group Stage',
+      order: 0,
+      format: {
+        kind: 'group_stage',
+        groupCount: groups.length,
+        // The draw is a fact here, not something to compute: these groups were
+        // already played.
+        distribution: 'manual',
+        groups,
+        perGroup: {
+          legs: legsWithinGroups(groupMembers, groupMatches.length),
+          pointSystem: DEFAULT_POINT_SYSTEM,
+          tiebreakers: [...DEFAULT_TIEBREAKERS],
+          matchFormat,
+        },
       },
-    ],
-    createdAt: options.timestamp,
-    updatedAt: options.timestamp,
-  };
+      entrySeeding: [
+        newRule({
+          source: { kind: 'participants' },
+          targetSlots: { from: 1, to: participants.length },
+          order: 'as_ranked',
+        }),
+      ],
+      createdAt: options.timestamp,
+      updatedAt: options.timestamp,
+    });
+    matchesByStage.push(groupMatches);
+
+    const qualifiers = groups.length * advance;
+    stages.push({
+      id: asId<StageId>(options.newId()),
+      tournamentId,
+      name: stageNameFor(format.kind),
+      order: 1,
+      format,
+      entrySeeding: [
+        newRule({
+          source: {
+            kind: 'group_standings',
+            stageId: groupStageId,
+            placeRange: { from: 1, to: advance },
+          },
+          targetSlots: { from: 1, to: qualifiers },
+          order: 'snake',
+        }),
+      ],
+      createdAt: options.timestamp,
+      updatedAt: options.timestamp,
+    });
+    matchesByStage.push(mainMatches);
+  } else {
+    stages.push({
+      id: asId<StageId>(options.newId()),
+      tournamentId,
+      name: stageNameFor(format.kind),
+      order: 0,
+      format,
+      entrySeeding: [
+        newRule({
+          source: { kind: 'participants' },
+          targetSlots: { from: 1, to: participants.length },
+          order: 'as_ranked',
+        }),
+      ],
+      createdAt: options.timestamp,
+      updatedAt: options.timestamp,
+    });
+    matchesByStage.push(mainMatches);
+  }
 
   const tournament: Tournament = {
     id: tournamentId,
@@ -303,7 +398,7 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     gameId,
     status: source.state === 'complete' ? 'completed' : 'live',
     participants,
-    stageIds: [stageId],
+    stageIds: stages.map((stage) => stage.id),
     createdAt: source.created_at ?? options.timestamp,
     updatedAt: options.timestamp,
     ...(source.description ? { description: stripHtml(source.description) } : {}),
@@ -311,25 +406,38 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     ...(source.completed_at ? { endsAt: source.completed_at } : {}),
   };
 
+  const allEntrants = new Map<string, string>();
+  for (const entrant of [...entrants, ...source.participants.map((e) => e.participant)]) {
+    allEntrants.set(entrant.id, entrant.name ?? entrant.display_name ?? entrant.id);
+  }
+
   const attached = attachBestVariant({
     tournament,
-    stage,
+    stages,
     byChallongeId,
-    challongeMatches,
-    entrants: new Map(entrants.map((e) => [e.id, e.name ?? e.display_name ?? e.id])),
+    matchesByStage,
+    entrants: allEntrants,
     options,
     notes,
   });
 
+  if (hasGroups) {
+    notes.push({
+      code: 'group_stage_imported',
+      message: `Imported as a group stage of ${String(groupMembers.length)} feeding a bracket.`,
+      values: { groups: groupMembers.length },
+    });
+  }
+
   return {
     skipped: false,
     tournament,
-    stages: [attached.stage],
+    stages: attached.stages,
     matches: attached.matches,
     report: {
       source: label,
       name: source.name,
-      format: format.kind,
+      format: hasGroups ? 'group_stage' : format.kind,
       participants: participants.length,
       fixtures: attached.fixtures,
       placed: attached.placed,
@@ -342,53 +450,135 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
   };
 }
 
+const bySeed = (a: { seed?: number | undefined }, b: { seed?: number | undefined }): number =>
+  (a.seed ?? Number.MAX_SAFE_INTEGER) - (b.seed ?? Number.MAX_SAFE_INTEGER);
+
 /**
- * Places results, trying every loser bracket drop order.
+ * Whether the groups were played once through or twice.
  *
- * The drop order decides who meets whom after a defeat, so a bracket drawn
- * under one rule cannot hold results played under another — they would simply
- * have nowhere to go. Rather than assume which rule the source used, and since
- * placement is a pure function, each is tried and whichever accounts for more
- * of the recorded history is kept.
+ * A group of n plays n(n-1)/2 fixtures in a single round. Twice that many means
+ * home and away, which is a difference the table depends on.
+ */
+function legsWithinGroups(
+  groupMembers: readonly (readonly unknown[])[],
+  matchCount: number,
+): 1 | 2 {
+  const single = groupMembers.reduce(
+    (sum, members) => sum + (members.length * (members.length - 1)) / 2,
+    0,
+  );
+  return single > 0 && matchCount >= single * 2 ? 2 : 1;
+}
+
+/**
+ * Places results, trying every arrangement the source might have used.
+ *
+ * How a bracket is drawn decides who meets whom, so results played under one
+ * arrangement have nowhere to sit in a bracket drawn under another. Rather than
+ * assume, and since placement is a pure function, each candidate is tried and
+ * whichever accounts for more of the recorded history is kept.
  */
 function attachBestVariant(input: {
   tournament: Tournament;
-  stage: Stage;
+  stages: readonly Stage[];
   byChallongeId: Map<string, ParticipantId>;
-  challongeMatches: readonly ChallongeMatch[];
+  matchesByStage: readonly (readonly ChallongeMatch[])[];
   entrants: Map<string, string>;
   options: MapOptions;
   notes: ReportNote[];
-}): Attached & { stage: Stage } {
-  const { stage, notes } = input;
+}): Attached & { stages: Stage[] } {
+  const { stages, notes } = input;
 
-  if (stage.format.kind !== 'double_elimination') {
-    return { ...attachResults({ ...input, stage }), stage };
-  }
+  const candidates = variantsOf(stages);
+  const attempts = candidates.map((candidate) => ({
+    candidate,
+    result: attachResults({ ...input, stages: candidate.stages }),
+  }));
 
-  const variants = (['balanced', 'alternating', 'reversed', 'standard'] as const).map((seeding) => {
-    const candidate: Stage = {
-      ...stage,
-      format: { ...stage.format, loserBracketSeeding: seeding } as FormatConfig,
-    };
-    return { seeding, candidate, result: attachResults({ ...input, stage: candidate }) };
-  });
-
-  const best = variants.reduce((winner, entry) =>
+  const best = attempts.reduce((winner, entry) =>
     entry.result.placed > winner.result.placed ? entry : winner,
   );
 
-  if (best.seeding !== 'balanced') {
+  const order = best.candidate.dropOrder;
+  if (order !== undefined && order !== 'balanced') {
     notes.push({
       code: 'loser_bracket_order',
       message:
-        `Loser bracket drawn with the "${best.seeding}" drop order to match the source; ` +
+        `Loser bracket drawn with the "${order}" drop order to match the source; ` +
         'it allows rematches the default arrangement avoids.',
-      values: { order: best.seeding },
+      values: { order },
     });
   }
 
-  return { ...best.result, stage: best.candidate };
+  if (best.candidate.seedingOrder === 'as_ranked') {
+    notes.push({
+      code: 'playoff_seeding',
+      message: 'Qualifiers enter the bracket in ranked order, as the source had them.',
+    });
+  }
+
+  return { ...best.result, stages: best.candidate.stages };
+}
+
+interface Variant {
+  stages: Stage[];
+  dropOrder?: DoubleEliminationConfig['loserBracketSeeding'];
+  seedingOrder?: SeedingRule['order'];
+}
+
+/**
+ * The arrangements worth trying for a given set of stages.
+ *
+ * Only the choices that actually change which pairing a result belongs to: the
+ * loser bracket drop order, and — where a bracket is fed by group tables — the
+ * order the qualifiers enter it in.
+ */
+function variantsOf(stages: readonly Stage[]): Variant[] {
+  const last = stages.at(-1);
+  const bracket = last?.format;
+
+  const dropOrders: (DoubleEliminationConfig['loserBracketSeeding'] | undefined)[] =
+    bracket?.kind === 'double_elimination'
+      ? ['balanced', 'alternating', 'reversed', 'standard']
+      : [undefined];
+
+  const fedByGroups =
+    last?.entrySeeding.some((rule) => rule.source.kind === 'group_standings') === true;
+  const seedingOrders: (SeedingRule['order'] | undefined)[] = fedByGroups
+    ? ['snake', 'as_ranked']
+    : [undefined];
+
+  const variants: Variant[] = [];
+
+  for (const dropOrder of dropOrders) {
+    for (const seedingOrder of seedingOrders) {
+      const next = stages.map((stage, index) => {
+        if (index !== stages.length - 1) return stage;
+
+        const format =
+          dropOrder !== undefined && stage.format.kind === 'double_elimination'
+            ? { ...stage.format, loserBracketSeeding: dropOrder }
+            : stage.format;
+
+        const entrySeeding =
+          seedingOrder === undefined
+            ? stage.entrySeeding
+            : stage.entrySeeding.map((rule) =>
+                rule.source.kind === 'group_standings' ? { ...rule, order: seedingOrder } : rule,
+              );
+
+        return { ...stage, format, entrySeeding };
+      });
+
+      variants.push({
+        stages: next,
+        ...(dropOrder !== undefined ? { dropOrder } : {}),
+        ...(seedingOrder !== undefined ? { seedingOrder } : {}),
+      });
+    }
+  }
+
+  return variants;
 }
 
 interface Attached {
@@ -400,19 +590,29 @@ interface Attached {
   fixtures: number;
 }
 
+/**
+ * Walks the recorded results onto the derived structure.
+ *
+ * Derive, find the fixtures whose participants are now known, look for a source
+ * result between exactly those two, record it, derive again. Progression does
+ * the addressing, so the import never depends on the source's own numbering.
+ *
+ * Results are pooled per stage rather than globally. Two teams can meet in a
+ * group and again in the bracket that follows, and a playoff result consumed by
+ * a group fixture would put the right score on the wrong occasion.
+ */
 function attachResults(input: {
   tournament: Tournament;
-  stage: Stage;
+  stages: readonly Stage[];
   byChallongeId: Map<string, ParticipantId>;
-  challongeMatches: readonly ChallongeMatch[];
+  matchesByStage: readonly (readonly ChallongeMatch[])[];
   entrants: Map<string, string>;
   options: MapOptions;
 }): Attached {
-  const { tournament, stage, byChallongeId, challongeMatches, entrants, options } = input;
+  const { tournament, stages, byChallongeId, matchesByStage, entrants, options } = input;
 
   const unplaced: UnplacedResult[] = [];
   const contested: ContestedResult[] = [];
-  const pool = new Map<string, ChallongeMatch[]>();
 
   const describe = (match: ChallongeMatch): UnplacedResult => ({
     challongeMatchId: match.id,
@@ -421,28 +621,37 @@ function attachResults(input: {
     score: match.scores_csv ?? '',
   });
 
-  for (const match of decidedMatches(challongeMatches)) {
-    const a = byChallongeId.get(match.player1_id ?? '');
-    const b = byChallongeId.get(match.player2_id ?? '');
-    if (a === undefined || b === undefined) {
-      unplaced.push(describe(match));
-      continue;
+  const pools = matchesByStage.map((forStage) => {
+    const pool = new Map<string, ChallongeMatch[]>();
+
+    for (const match of decidedMatches(forStage)) {
+      const a = byChallongeId.get(match.player1_id ?? '');
+      const b = byChallongeId.get(match.player2_id ?? '');
+      if (a === undefined || b === undefined) {
+        unplaced.push(describe(match));
+        continue;
+      }
+      const key = pairKey(a, b);
+      const queue = pool.get(key) ?? [];
+      queue.push(match);
+      pool.set(key, queue);
     }
-    const key = pairKey(a, b);
-    const queue = pool.get(key) ?? [];
-    queue.push(match);
-    pool.set(key, queue);
-  }
+
+    return pool;
+  });
 
   const matches: Match[] = [];
   const taken = new Set<MatchId>();
-  const passes = challongeMatches.length + 8;
+  const passes = matchesByStage.reduce((sum, forStage) => sum + forStage.length, 0) + 8;
 
   for (let pass = 0; pass < passes; pass += 1) {
-    const state = deriveTournamentState({ tournament, stages: [stage], matches });
+    const state = deriveTournamentState({ tournament, stages: [...stages], matches });
     let progressed = false;
 
-    for (const derived of state.stages) {
+    for (const [stageIndex, derived] of state.stages.entries()) {
+      const pool = pools[stageIndex];
+      if (!pool) continue;
+
       const structural = new Map(derived.structure.matches.map((match) => [match.id, match]));
 
       for (const resolved of derived.resolved.matches) {
@@ -470,7 +679,7 @@ function attachResults(input: {
         matches.push(
           buildMatch({
             tournamentId: tournament.id,
-            stageId: stage.id,
+            stageId: derived.stage.id,
             blueprint,
             challonge,
             slotAIsPlayer1: byChallongeId.get(challonge.player1_id ?? '') === a,
@@ -485,11 +694,13 @@ function attachResults(input: {
     if (!progressed) break;
   }
 
-  for (const queue of pool.values()) {
-    for (const leftover of queue) unplaced.push(describe(leftover));
+  for (const pool of pools) {
+    for (const queue of pool.values()) {
+      for (const leftover of queue) unplaced.push(describe(leftover));
+    }
   }
 
-  const final = deriveTournamentState({ tournament, stages: [stage], matches });
+  const final = deriveTournamentState({ tournament, stages: [...stages], matches });
   const playable = final.stages.flatMap((derived) =>
     derived.resolved.matches.filter((match) => !match.isBye && match.status !== 'cancelled'),
   );

@@ -43,6 +43,14 @@ const matchSchema = z.looseObject({
   forfeited: z.boolean().nullable().optional(),
 });
 
+const groupSchema = z.looseObject({
+  name: z.string().nullable().optional(),
+  tournament: z
+    .looseObject({ participant_count_to_advance: z.number().nullable().optional() })
+    .optional(),
+  matches_by_round: z.record(z.string(), z.array(matchSchema)).optional(),
+});
+
 export const publicBracketSchema = z.looseObject({
   tournament: z.looseObject({
     id,
@@ -52,6 +60,8 @@ export const publicBracketSchema = z.looseObject({
     group_stage_progress_meter: z.number().nullable().optional(),
   }),
   matches_by_round: z.record(z.string(), z.array(matchSchema)),
+  /** Each group is itself a little bracket payload. */
+  groups: z.array(groupSchema).default([]),
 });
 
 export type PublicBracket = z.infer<typeof publicBracketSchema>;
@@ -75,12 +85,46 @@ export function isPublicBracket(raw: unknown): boolean {
 export function fromPublicBracket(bracket: PublicBracket, name?: string): ChallongeTournament {
   const matches = Object.values(bracket.matches_by_round).flat();
 
-  /*
-   * Participants are reconstructed from the matches, which is the only place
-   * they appear. Everyone plays at least one match — in the first round of the
-   * winner bracket if nowhere else — so nobody is lost this way.
-   */
+  const groups = bracket.groups.map((group) => {
+    const groupMatches = Object.values(group.matches_by_round ?? {}).flat();
+    return {
+      ...(group.name ? { name: group.name } : {}),
+      ...(group.tournament?.participant_count_to_advance != null
+        ? { advanceCount: group.tournament.participant_count_to_advance }
+        : {}),
+      participants: participantsOf(groupMatches).map((participant) => ({ participant })),
+      matches: groupMatches.map((match) => ({ match: toApiMatch(match) })),
+    };
+  });
+
+  const source = {
+    id: bracket.tournament.id,
+    name: name ?? `Challonge ${bracket.tournament.id}`,
+    tournament_type: bracket.tournament.tournament_type,
+    state: bracket.tournament.state,
+    grand_finals_modifier: bracket.tournament.grand_finals_modifier,
+    // A preliminary group phase reports its own progress; anything above zero
+    // means the event has one.
+    group_stages_enabled: (bracket.tournament.group_stage_progress_meter ?? 0) > 0,
+    participants: participantsOf(matches).map((participant) => ({ participant })),
+    matches: matches.map((match) => ({ match: toApiMatch(match) })),
+    groups,
+  };
+
+  return challongeTournamentSchema.parse(source);
+}
+
+/**
+ * Participants of a set of matches.
+ *
+ * They appear nowhere else in the payload, and everyone plays at least one
+ * match, so nobody is lost by reading them off the fixtures.
+ */
+function participantsOf(
+  matches: readonly z.infer<typeof matchSchema>[],
+): { id: string; name: string; seed?: number }[] {
   const participants = new Map<string, { id: string; name: string; seed?: number }>();
+
   for (const match of matches) {
     for (const player of [match.player1, match.player2]) {
       if (!player?.id || participants.has(player.id)) continue;
@@ -92,35 +136,24 @@ export function fromPublicBracket(bracket: PublicBracket, name?: string): Challo
     }
   }
 
-  const source = {
-    id: bracket.tournament.id,
-    name: name ?? `Challonge ${bracket.tournament.id}`,
-    tournament_type: bracket.tournament.tournament_type,
-    state: bracket.tournament.state,
-    grand_finals_modifier: bracket.tournament.grand_finals_modifier,
-    // A preliminary group phase reports its own progress; anything above zero
-    // means the event has one.
-    group_stages_enabled: (bracket.tournament.group_stage_progress_meter ?? 0) > 0,
-    participants: [...participants.values()].map((participant) => ({ participant })),
-    matches: matches.map((match) => ({
-      match: {
-        id: match.id,
-        round: match.round,
-        state: match.state,
-        player1_id: match.player1?.id,
-        player2_id: match.player2?.id,
-        winner_id: match.winner_id,
-        loser_id: match.loser_id,
-        scores_csv: toScoresCsv(match.games, match.scores),
-        forfeited: match.forfeited,
-        // The identifier is Challonge's own play order, which is what keeps
-        // repeated pairings on the right occasion.
-        suggested_play_order: typeof match.identifier === 'number' ? match.identifier : undefined,
-      },
-    })),
-  };
+  return [...participants.values()];
+}
 
-  return challongeTournamentSchema.parse(source);
+function toApiMatch(match: z.infer<typeof matchSchema>) {
+  return {
+    id: match.id,
+    round: match.round,
+    state: match.state,
+    player1_id: match.player1?.id,
+    player2_id: match.player2?.id,
+    winner_id: match.winner_id,
+    loser_id: match.loser_id,
+    scores_csv: toScoresCsv(match.games, match.scores),
+    forfeited: match.forfeited,
+    // The identifier is Challonge's own play order, which is what keeps repeated
+    // pairings on the right occasion.
+    suggested_play_order: typeof match.identifier === 'number' ? match.identifier : undefined,
+  };
 }
 
 /** [[13, 7], [10, 13]] into "13-7,10-13". */

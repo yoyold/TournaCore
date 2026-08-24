@@ -35,7 +35,13 @@ export function generateGroupStage(input: {
 }): GeneratedStructure {
   const { stageId, config, slotCount } = input;
 
-  const groups = distributeSlots(slotCount, config.groupCount, config.distribution, stageId);
+  const groups = distributeSlots(
+    slotCount,
+    config.groupCount,
+    config.distribution,
+    stageId,
+    config.groups,
+  );
 
   const matches: GeneratedStructure['matches'] = [];
   const rounds: GeneratedStructure['rounds'] = [];
@@ -73,7 +79,13 @@ export function groupsOf(
   slotCount: number,
   seededSlots: ReadonlyMap<number, ParticipantId>,
 ): ParticipantId[][] {
-  return distributeSlots(slotCount, config.groupCount, config.distribution, stageId).map((slots) =>
+  return distributeSlots(
+    slotCount,
+    config.groupCount,
+    config.distribution,
+    stageId,
+    config.groups,
+  ).map((slots) =>
     slots
       .map((slotIndex) => seededSlots.get(slotIndex))
       .filter((id): id is ParticipantId => id !== undefined),

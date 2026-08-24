@@ -118,6 +118,15 @@ export interface GroupStageConfig {
    * pass so group strength stays balanced.
    */
   distribution: 'snake' | 'sequential' | 'random' | 'manual';
+  /**
+   * Explicit membership for `manual`: one array of 1-based entry slots per
+   * group.
+   *
+   * Needed wherever the grouping is a fact rather than something to compute — a
+   * draw made elsewhere, or an imported tournament whose groups were already
+   * played. Ignored by every other distribution.
+   */
+  groups?: number[][];
   perGroup: Omit<RoundRobinConfig, 'kind'>;
 }
 

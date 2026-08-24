@@ -295,10 +295,12 @@ describe('formats', () => {
 
 describe('what it refuses', () => {
   /**
-   * Half a tournament is worse than none: a group phase that imported only its
-   * final bracket would look complete and silently be missing its history.
+   * Half a tournament is worse than none. Group stages themselves are supported;
+   * what is refused is data that announces them without carrying them, which is
+   * what the API returns — importing only the final bracket would look complete
+   * and silently be missing the whole first phase.
    */
-  it('skips a tournament with group stages instead of importing half of it', () => {
+  it('skips a group tournament whose groups are not in the data', () => {
     const { data, reports } = convert(
       tournament({
         players: ['Alpha', 'Beta'],
@@ -307,6 +309,7 @@ describe('what it refuses', () => {
     );
 
     expect(reports[0]?.skipped).toBe(true);
+    expect(reports[0]?.notes[0]?.code).toBe('group_stages_missing');
     expect(data.tournaments).toHaveLength(0);
   });
 
@@ -459,4 +462,133 @@ const DOUBLE_ELIMINATION = tournament({
     { id: '6', player1: '1', player2: '2', winner: '1', order: 6 },
   ],
   extra: { grand_finals_modifier: 'single match' },
+});
+
+/**
+ * A group phase and the bracket after it are separate tournaments to Challonge,
+ * each numbering its own participants. The same club appears under one id in its
+ * group and a different one in the bracket, linked only by name.
+ */
+const WITH_GROUPS = {
+  tournament: {
+    id: 3742443,
+    name: 'Group Cup',
+    url: 'group-cup',
+    tournament_type: 'single elimination',
+    state: 'complete',
+    group_stages_enabled: true,
+    // The main bracket, with its own participant identifiers.
+    participants: [
+      { participant: { id: 901, name: 'Alpha', seed: 1 } },
+      { participant: { id: 902, name: 'Gamma', seed: 2 } },
+    ],
+    matches: [
+      {
+        match: {
+          id: 500,
+          state: 'complete',
+          player1_id: 901,
+          player2_id: 902,
+          winner_id: 901,
+          scores_csv: '2-1',
+          suggested_play_order: 1,
+        },
+      },
+    ],
+    groups: [group(1, ['Alpha', 'Beta'], 10), group(2, ['Gamma', 'Delta'], 20)],
+  },
+};
+
+function group(index: number, names: string[], idBase: number) {
+  const ids = names.map((_, i) => idBase + i);
+  return {
+    name: `Group ${String(index)}`,
+    advanceCount: 1,
+    participants: names.map((name, i) => ({
+      participant: { id: ids[i], name, seed: i + 1 },
+    })),
+    matches: [
+      {
+        match: {
+          id: idBase * 10,
+          state: 'complete',
+          player1_id: ids[0],
+          player2_id: ids[1],
+          winner_id: ids[0],
+          scores_csv: '2-0',
+          suggested_play_order: index,
+        },
+      },
+    ],
+  };
+}
+
+describe('group stages', () => {
+  it('becomes a group stage feeding a bracket', () => {
+    const { data, reports } = convert(WITH_GROUPS);
+
+    expect(reports[0]?.skipped).toBe(false);
+    expect(data.stages).toHaveLength(2);
+    expect(data.stages[0]?.format.kind).toBe('group_stage');
+    expect(data.stages[1]?.format.kind).toBe('single_elimination');
+  });
+
+  it('reproduces the groups exactly rather than redrawing them', () => {
+    const { data } = convert(WITH_GROUPS);
+    const format = data.stages[0]?.format;
+
+    expect(format).toMatchObject({ distribution: 'manual', groupCount: 2 });
+    expect((format as { groups?: number[][] }).groups).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
+  /** Identity across the two phases exists only as a name. */
+  it('recognises a team as the same in its group and in the bracket', () => {
+    const { data } = convert(WITH_GROUPS);
+
+    expect(data.teams.map((team) => team.name).sort()).toEqual(['Alpha', 'Beta', 'Delta', 'Gamma']);
+    expect(data.tournaments[0]?.participants).toHaveLength(4);
+  });
+
+  it('links the bracket to the group tables', () => {
+    const { data } = convert(WITH_GROUPS);
+    const rule = data.stages[1]?.entrySeeding[0];
+
+    expect(rule?.source).toMatchObject({
+      kind: 'group_standings',
+      stageId: data.stages[0]?.id,
+      placeRange: { from: 1, to: 1 },
+    });
+  });
+
+  it('places both phases of results', () => {
+    const { reports, data } = convert(WITH_GROUPS);
+
+    // Two group fixtures and one final.
+    expect(reports[0]?.placed).toBe(3);
+    expect(reports[0]?.unplaced).toEqual([]);
+    expect(data.matches).toHaveLength(3);
+  });
+
+  it('reports what it did', () => {
+    const { reports } = convert(WITH_GROUPS);
+    expect(reports[0]?.notes.map((note) => note.code)).toContain('group_stage_imported');
+  });
+
+  /**
+   * The API reports that groups exist but does not return them. Importing the
+   * bracket alone would look complete and be missing its whole first phase.
+   */
+  it('refuses data that says it has groups but does not carry them', () => {
+    const withoutGroups = structuredClone(WITH_GROUPS);
+    withoutGroups.tournament.groups = [];
+
+    const { reports, data } = convert(withoutGroups);
+
+    expect(reports[0]?.skipped).toBe(true);
+    expect(reports[0]?.notes[0]?.code).toBe('group_stages_missing');
+    expect(data.tournaments).toHaveLength(0);
+  });
 });

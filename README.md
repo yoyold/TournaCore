@@ -81,8 +81,11 @@ Worth knowing before you start:
   what makes cross-tournament statistics and ratings meaningful. Pass
   `--existing <export.json>` so teams you already have are reused rather than
   duplicated.
-- **Single and double elimination, round robin and Swiss** convert. Tournaments
-  using Challonge's group stages are skipped rather than half-imported.
+- **Single and double elimination, round robin, Swiss and group stages** all
+  convert. A group phase becomes two linked stages, with the groups reproduced
+  exactly as they were drawn rather than recomputed. This needs the public
+  bracket page: the API announces group stages without returning them, and a
+  tournament missing its whole first phase is refused rather than half-imported.
 - **The loser bracket draw is detected, not assumed.** Which winner bracket
   casualty drops onto which survivor decides who meets whom after a defeat, and
   bracket software does not agree on the rule. Each supported arrangement is

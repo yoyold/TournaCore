@@ -20,6 +20,8 @@ export function distributeSlots(
   distribution: GroupStageConfig['distribution'],
   /** Stable seed for the random variant, so a reload does not redraw. */
   drawSeed = 'groups',
+  /** Explicit membership for `manual`. */
+  manual?: readonly (readonly number[])[],
 ): number[][] {
   const groups: number[][] = Array.from({ length: Math.max(groupCount, 1) }, () => []);
   if (slotCount < 1 || groupCount < 1) return groups;
@@ -45,10 +47,26 @@ export function distributeSlots(
       return groups;
     }
 
-    case 'manual':
-      // Nothing to compute: the caller supplies the assignment. Falls back to
-      // snake so a half-configured stage still produces a sensible structure.
-      return distributeSlots(slotCount, groupCount, 'snake', drawSeed);
+    case 'manual': {
+      /*
+       * The assignment is a fact the caller holds — a draw made elsewhere, or an
+       * imported tournament whose groups were already played. Only slots that
+       * actually exist are kept, so a stale assignment cannot invent entrants.
+       */
+      if (manual === undefined) {
+        // Half-configured: still produce something playable rather than nothing.
+        return distributeSlots(slotCount, groupCount, 'snake', drawSeed);
+      }
+
+      manual.forEach((members, index) => {
+        const target = groups[index];
+        if (!target) return;
+        for (const slot of members) {
+          if (slot >= 1 && slot <= slotCount) target.push(slot);
+        }
+      });
+      return groups;
+    }
 
     case 'snake':
     default: {

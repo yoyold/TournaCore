@@ -349,13 +349,15 @@
       "acceptPartial": "I understand {{count}} result(s) will be missing.",
       "imported": "{{count}} tournament(s) brought in.",
       "note": {
-        "group_stages": "Group stages are not supported yet — this tournament is skipped.",
         "too_few_participants": "Fewer than two participants.",
         "unsupported_type": "Challonge type “{{type}}” is not supported.",
         "grand_final_skipped": "Challonge skipped the grand final; a single one is used here.",
         "double_round_robin": "Detected a double round robin.",
         "swiss_recomputed": "Swiss pairings are recomputed here and may differ from Challonge’s.",
-        "loser_bracket_order": "Loser bracket drawn with the “{{order}}” arrangement to match the source. It allows rematches the default avoids."
+        "loser_bracket_order": "Loser bracket drawn with the “{{order}}” arrangement to match the source. It allows rematches the default avoids.",
+        "group_stages_missing": "This tournament has a group stage, but the data does not include it. Use the public bracket page (challonge.com/<slug>.json).",
+        "group_stage_imported": "Imported as a group stage of {{groups}} feeding a bracket.",
+        "playoff_seeding": "Qualifiers enter the bracket in ranked order, as the source had them."
       }
     }
   },

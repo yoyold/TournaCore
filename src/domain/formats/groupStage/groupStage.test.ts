@@ -212,3 +212,57 @@ describe('groupStageFormat.validate group count', () => {
     expect(groupStageFormat.validate(config(), 500).valid).toBe(false);
   });
 });
+
+describe('explicit group membership', () => {
+  /**
+   * Some groupings are a fact rather than something to compute — a draw made
+   * elsewhere, or an imported tournament whose groups were already played.
+   * Recomputing those would put the recorded results in the wrong groups.
+   */
+  it('uses the assignment it is given', () => {
+    const assignment = [
+      [1, 4, 5, 8],
+      [2, 3, 6, 7],
+    ];
+
+    expect(distributeSlots(8, 2, 'manual', 'seed', assignment)).toEqual(assignment);
+  });
+
+  it('ignores slots that do not exist', () => {
+    // A stale assignment must not invent entrants.
+    expect(
+      distributeSlots(4, 2, 'manual', 'seed', [
+        [1, 2, 99],
+        [3, 4],
+      ]),
+    ).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
+  it('still produces something playable when no assignment was supplied', () => {
+    expect(distributeSlots(8, 2, 'manual')).toEqual(distributeSlots(8, 2, 'snake'));
+  });
+
+  it('carries the assignment through to the fixtures', () => {
+    const cfg = config({
+      groupCount: 2,
+      distribution: 'manual',
+      groups: [
+        [1, 4, 5, 8],
+        [2, 3, 6, 7],
+      ],
+    });
+    const structure = generateGroupStage({ stageId: STAGE, config: cfg, slotCount: 8 });
+
+    for (const match of structure.matches) {
+      const members = match.position.groupIndex === 0 ? [1, 4, 5, 8] : [2, 3, 6, 7];
+      const a = match.slotA.kind === 'seeded' ? match.slotA.slotIndex : -1;
+      const b = match.slotB.kind === 'seeded' ? match.slotB.slotIndex : -1;
+
+      expect(members).toContain(a);
+      expect(members).toContain(b);
+    }
+  });
+});

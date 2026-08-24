@@ -48,6 +48,22 @@ export const challongeMatchSchema = z.looseObject({
   updated_at: z.string().nullable().optional(),
 });
 
+/**
+ * One group of a preliminary phase, already normalised.
+ *
+ * Challonge serves a group as a self-contained little tournament with its own
+ * participant identifiers — the same club appears under one id in its group and
+ * a different one in the bracket that follows, linked only by name. Normalising
+ * it into this shape keeps that awkwardness in one place.
+ */
+export const challongeGroupSchema = z.looseObject({
+  name: z.string().optional(),
+  /** Places that carry over from this group into the main bracket. */
+  advanceCount: numeric.optional(),
+  participants: z.array(z.looseObject({ participant: challongeParticipantSchema })).default([]),
+  matches: z.array(z.looseObject({ match: challongeMatchSchema })).default([]),
+});
+
 export const challongeTournamentSchema = z.looseObject({
   id: z.union([z.number(), z.string()]).transform((value) => String(value)),
   name: z.string(),
@@ -67,6 +83,8 @@ export const challongeTournamentSchema = z.looseObject({
   group_stages_enabled: z.boolean().nullable().optional(),
   participants: z.array(z.looseObject({ participant: challongeParticipantSchema })).default([]),
   matches: z.array(z.looseObject({ match: challongeMatchSchema })).default([]),
+  /** Preliminary groups, when the event has them. */
+  groups: z.array(challongeGroupSchema).default([]),
 });
 
 /** A single tournament as the API returns it, wrapped in its envelope. */
@@ -88,6 +106,7 @@ export const challongeInputSchema = z.union([
 
 export type ChallongeParticipant = z.infer<typeof challongeParticipantSchema>;
 export type ChallongeMatch = z.infer<typeof challongeMatchSchema>;
+export type ChallongeGroup = z.infer<typeof challongeGroupSchema>;
 export type ChallongeTournament = z.infer<typeof challongeTournamentSchema>;
 
 export class ChallongeFormatError extends Error {
