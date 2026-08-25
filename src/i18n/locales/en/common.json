@@ -162,7 +162,13 @@
     "deleteTitle": "Delete tournament?",
     "deleteMessage": "\"{{name}}\" will be permanently deleted, along with its stages and results.",
     "deleteDetail": "{{matches}} stored matches will be lost. This cannot be undone.",
-    "deleteConfirm": "Delete permanently"
+    "deleteConfirm": "Delete permanently",
+    "editTitle": "Edit tournament",
+    "field": {
+      "date": "Date",
+      "status": "Status",
+      "dateHint": "Decides where the tournament sits in the list. Challonge imports carry no date, so it has to be entered here."
+    }
   },
   "result": {
     "title": "Record result",
@@ -375,7 +381,9 @@
         "qualifying_bracket": "The qualifying phase is a bracket of several rounds, which cannot be represented yet.",
         "playoff_seeding_recorded": "The bracket keeps the line-up the source recorded rather than deriving it from the qualifying tables.",
         "play_in_imported": "Imported as a qualifying round of {{groups}} pairings feeding a bracket."
-      }
+      },
+      "date": "Tournament date",
+      "dateHint": "Public brackets carry no date. Without one the tournament is dated today, which is worth avoiding for an archive spanning years."
     }
   },
   "routeError": {

@@ -754,3 +754,33 @@ describe('a knockout qualifying round', () => {
     expect(data.tournaments).toHaveLength(0);
   });
 });
+
+describe('when the tournament took place', () => {
+  /**
+   * A public Challonge bracket carries no date whatsoever. Without one every
+   * import is dated the moment it ran, and an archive spanning years collapses
+   * into a single day — which makes a list ordered by date useless.
+   */
+  it('uses the supplied date when the source has none', () => {
+    const { data } = convert(SINGLE_ELIMINATION, {
+      ...options(),
+      playedAt: '2019-04-01T00:00:00.000Z',
+    });
+
+    expect(data.tournaments[0]?.createdAt).toBe('2019-04-01T00:00:00.000Z');
+    expect(data.tournaments[0]?.startsAt).toBe('2019-04-01T00:00:00.000Z');
+  });
+
+  it('prefers what the source recorded over the supplied date', () => {
+    const dated = structuredClone(SINGLE_ELIMINATION);
+    Object.assign(dated.tournament, { created_at: '2020-05-05T00:00:00.000Z' });
+
+    const { data } = convert(dated, { ...options(), playedAt: '2019-04-01T00:00:00.000Z' });
+    expect(data.tournaments[0]?.createdAt).toBe('2020-05-05T00:00:00.000Z');
+  });
+
+  it('falls back to the moment of import when nothing says otherwise', () => {
+    const { data } = convert(SINGLE_ELIMINATION);
+    expect(data.tournaments[0]?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+  });
+});

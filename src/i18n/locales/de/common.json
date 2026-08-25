@@ -162,7 +162,13 @@
     "deleteTitle": "Turnier löschen?",
     "deleteMessage": "„{{name}}“ wird mit allen Phasen und Ergebnissen dauerhaft gelöscht.",
     "deleteDetail": "{{matches}} gespeicherte Matches gehen verloren. Das lässt sich nicht rückgängig machen.",
-    "deleteConfirm": "Endgültig löschen"
+    "deleteConfirm": "Endgültig löschen",
+    "editTitle": "Turnier bearbeiten",
+    "field": {
+      "date": "Datum",
+      "status": "Status",
+      "dateHint": "Bestimmt, wo das Turnier in der Liste einsortiert wird. Bei Importen aus Challonge fehlt das Datum in den Daten und muss hier nachgetragen werden."
+    }
   },
   "result": {
     "title": "Ergebnis eintragen",
@@ -375,7 +381,9 @@
         "qualifying_bracket": "Die Qualifikationsphase ist ein Bracket über mehrere Runden — das lässt sich noch nicht abbilden.",
         "playoff_seeding_recorded": "Das Bracket behält die Setzung, die in der Vorlage steht, statt sie aus den Qualifikationstabellen abzuleiten.",
         "play_in_imported": "Als Qualifikationsrunde mit {{groups}} Paarungen plus anschließendem Bracket übernommen."
-      }
+      },
+      "date": "Datum des Turniers",
+      "dateHint": "Öffentliche Brackets enthalten kein Datum. Ohne Angabe wird das Turnier auf heute datiert — für ein Archiv über mehrere Jahre lohnt sich der Eintrag."
     }
   },
   "routeError": {

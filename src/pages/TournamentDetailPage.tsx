@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -96,15 +96,26 @@ export function TournamentDetailPage() {
         title={tournament.name}
         subtitle={tournament.description ?? t(`tournaments.status.${tournament.status}`)}
         actions={
-          <Button
-            variant="ghost"
-            icon={<Trash2 size={16} aria-hidden />}
-            onClick={() => {
-              setConfirmingDelete(true);
-            }}
-          >
-            {t('common.delete')}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              icon={<Pencil size={16} aria-hidden />}
+              onClick={() => {
+                void navigate(`/tournaments/${tournament.id}/edit`);
+              }}
+            >
+              {t('common.edit')}
+            </Button>
+            <Button
+              variant="ghost"
+              icon={<Trash2 size={16} aria-hidden />}
+              onClick={() => {
+                setConfirmingDelete(true);
+              }}
+            >
+              {t('common.delete')}
+            </Button>
+          </div>
         }
       />
 

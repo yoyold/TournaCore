@@ -32,6 +32,8 @@ Source (one of):
                         which needs no key).
   --name <text>         Tournament name for a public bracket, whose payload
                         does not carry one.
+  --date <YYYY-MM-DD>   When the tournament took place. A public bracket carries
+                        no date, so without this it is dated the day you import.
 
 Output:
   --out <path>          Write the TournaCore import file. Omit for a dry run.
@@ -45,6 +47,7 @@ interface Args {
   tournaments: string[];
   file?: string;
   name?: string;
+  date?: string;
   out?: string;
   saveRaw?: string;
   existing?: string;
@@ -75,6 +78,11 @@ function parseArgs(argv: readonly string[]): Args {
       case '--name':
         if (value === undefined) throw new Error('--name needs a value');
         args.name = value;
+        i += 1;
+        break;
+      case '--date':
+        if (value === undefined) throw new Error('--date needs a value');
+        args.date = value;
         i += 1;
         break;
       case '--out':
@@ -231,6 +239,7 @@ async function main(): Promise<number> {
     existingGames: existing.games,
     existingSlugs: existing.tournaments.map((tournament) => tournament.slug),
     timestamp: new Date().toISOString(),
+    ...(args.date !== undefined ? { playedAt: new Date(args.date).toISOString() } : {}),
     newId: () => nanoid(),
   });
 

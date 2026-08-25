@@ -41,6 +41,7 @@ export function ChallongeImportCard() {
 
   const [text, setText] = useState('');
   const [name, setName] = useState('');
+  const [playedAt, setPlayedAt] = useState('');
   const [preview, setPreview] = useState<Preview | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -77,6 +78,9 @@ export function ChallongeImportCard() {
         existingGames: existing.games,
         existingSlugs: existing.tournaments.map((tournament) => tournament.slug),
         timestamp: now(),
+        // A public bracket carries no date; without one every import would be
+        // dated today and an archive of years would collapse into a day.
+        ...(playedAt ? { playedAt: new Date(playedAt).toISOString() } : {}),
         newId: () => nanoid(),
       });
 
@@ -102,6 +106,7 @@ export function ChallongeImportCard() {
       setImported(preview.data.tournaments.length);
       setText('');
       setName('');
+      setPlayedAt('');
       reset();
     } finally {
       setBusy(false);
@@ -154,6 +159,22 @@ export function ChallongeImportCard() {
             />
           </label>
           <span className="text-xs text-fg-secondary">{t('transfer.challonge.nameHint')}</span>
+        </div>
+
+        <div className="grid gap-1.5">
+          <label className="grid gap-1.5">
+            <span className="text-sm font-medium text-fg">{t('transfer.challonge.date')}</span>
+            <input
+              type="date"
+              value={playedAt}
+              onChange={(event) => {
+                setPlayedAt(event.target.value);
+                reset();
+              }}
+              className="h-10 rounded-[var(--radius-control)] border border-line bg-inset px-3 text-sm text-fg outline-none focus-visible:border-accent"
+            />
+          </label>
+          <span className="text-xs text-fg-secondary">{t('transfer.challonge.dateHint')}</span>
         </div>
 
         <span>

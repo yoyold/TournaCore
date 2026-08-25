@@ -7,6 +7,7 @@ import { Button } from '@components/ui/Button';
 import { Card, CardBody } from '@components/ui/Card';
 import { PageHeader } from '@components/ui/PageHeader';
 import { buildDemoTournament, DEMO_TOURNAMENT_ID } from '@services/demo/demoTournament';
+import { byCreationDate } from '@services/tournament/order';
 import { useDataStore } from '@store/slices/dataSlice';
 
 export function TournamentsPage() {
@@ -21,7 +22,7 @@ export function TournamentsPage() {
   const removeTournament = useDataStore((s) => s.removeTournament);
   const [seeding, setSeeding] = useState(false);
 
-  const list = Object.values(tournaments);
+  const list = byCreationDate(Object.values(tournaments));
 
   const createDemo = async (): Promise<void> => {
     setSeeding(true);

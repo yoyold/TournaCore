@@ -34,6 +34,14 @@ export interface MapOptions {
   existingGames: readonly Game[];
   existingSlugs: readonly string[];
   timestamp: string;
+  /**
+   * When the tournament took place, for sources that do not say.
+   *
+   * A public Challonge bracket carries no date at all, so without this every
+   * imported tournament would be dated the moment it was imported — and an
+   * archive spanning years would collapse into a single day.
+   */
+  playedAt?: string | undefined;
   /** Injected so a conversion can be reproduced exactly. */
   newId: () => string;
 }
@@ -415,10 +423,12 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     status: source.state === 'complete' ? 'completed' : 'live',
     participants,
     stageIds: stages.map((stage) => stage.id),
-    createdAt: source.created_at ?? options.timestamp,
+    createdAt: source.created_at ?? options.playedAt ?? options.timestamp,
     updatedAt: options.timestamp,
     ...(source.description ? { description: stripHtml(source.description) } : {}),
-    ...(source.started_at ? { startsAt: source.started_at } : {}),
+    ...((source.started_at ?? options.playedAt)
+      ? { startsAt: source.started_at ?? options.playedAt ?? options.timestamp }
+      : {}),
     ...(source.completed_at ? { endsAt: source.completed_at } : {}),
   };
 
