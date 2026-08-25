@@ -1,5 +1,5 @@
-import { Plus, Sparkles, Trophy } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Search, Sparkles, Trophy } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ import { Card, CardBody } from '@components/ui/Card';
 import { PageHeader } from '@components/ui/PageHeader';
 import { buildDemoTournament, DEMO_TOURNAMENT_ID } from '@services/demo/demoTournament';
 import { byCreationDate } from '@services/tournament/order';
+import { searchTournaments } from '@services/tournament/search';
 import { useDataStore } from '@store/slices/dataSlice';
 
 export function TournamentsPage() {
@@ -16,13 +17,21 @@ export function TournamentsPage() {
   const tournaments = useDataStore((s) => s.tournaments);
   const hydrated = useDataStore((s) => s.hydrated);
   const saveTeam = useDataStore((s) => s.saveTeam);
+  const teams = useDataStore((s) => s.teams);
   const saveTournament = useDataStore((s) => s.saveTournament);
   const saveStage = useDataStore((s) => s.saveStage);
   const saveMatches = useDataStore((s) => s.saveMatches);
   const removeTournament = useDataStore((s) => s.removeTournament);
   const [seeding, setSeeding] = useState(false);
 
-  const list = byCreationDate(Object.values(tournaments));
+  const [query, setQuery] = useState('');
+
+  const total = Object.keys(tournaments).length;
+
+  const list = useMemo(
+    () => byCreationDate(searchTournaments(Object.values(tournaments), query, teams)),
+    [tournaments, query, teams],
+  );
 
   const createDemo = async (): Promise<void> => {
     setSeeding(true);
@@ -75,14 +84,47 @@ export function TournamentsPage() {
         }
       />
 
+      {hydrated && total > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <label className="relative flex-1 sm:max-w-xs">
+            <span className="sr-only-focusable">{t('common.search')}</span>
+            <Search
+              size={15}
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-muted"
+            />
+            <input
+              type="search"
+              value={query}
+              placeholder={t('tournaments.searchPlaceholder')}
+              aria-label={t('common.search')}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+              className="h-9 w-full rounded-[var(--radius-control)] border border-line bg-inset pr-3 pl-9 text-sm text-fg outline-none focus-visible:border-accent"
+            />
+          </label>
+          {query.trim() !== '' && (
+            <span className="text-xs text-fg-muted">
+              {t('tournaments.searchCount', { count: list.length, total })}
+            </span>
+          )}
+        </div>
+      )}
+
       {!hydrated && <p className="text-sm text-fg-muted">{t('common.loading')}</p>}
 
       {hydrated && list.length === 0 && (
         <Card>
           <CardBody className="flex flex-col items-center gap-3 py-14 text-center">
             <Trophy size={28} className="text-fg-muted" aria-hidden />
-            <p className="text-sm font-medium text-fg">{t('tournaments.emptyTitle')}</p>
-            <p className="max-w-md text-sm text-fg-secondary">{t('tournaments.emptyHint')}</p>
+            {/* Nothing here at all is a different problem from nothing found. */}
+            <p className="text-sm font-medium text-fg">
+              {total === 0 ? t('tournaments.emptyTitle') : t('tournaments.noMatches')}
+            </p>
+            <p className="max-w-md text-sm text-fg-secondary">
+              {total === 0 ? t('tournaments.emptyHint') : t('tournaments.noMatchesHint')}
+            </p>
           </CardBody>
         </Card>
       )}

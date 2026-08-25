@@ -216,7 +216,15 @@ export function dropSlot(
     case 'balanced':
       return index ^ 1;
     case 'alternating':
-      return dropRound % 2 === 1 ? count - 1 - index : index ^ 1;
+      /*
+       * Reverse on odd drop rounds, reverse and rotate by half on even ones.
+       *
+       * The rotation is what distinguishes this from `balanced`, and the two
+       * coincide whenever a round has exactly four matches — which is why a
+       * single tournament can look like evidence for either. They part company
+       * at two matches, where the rotation lands back on the natural order.
+       */
+      return dropRound % 2 === 1 ? count - 1 - index : (count - 1 - index + count / 2) % count;
     case 'standard':
       return index;
   }

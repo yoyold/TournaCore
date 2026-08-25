@@ -91,9 +91,9 @@ export interface DoubleEliminationConfig {
    * - `balanced` swaps each pair of drop slots, sending a casualty to the
    *   sibling subtree. Provably rematch-free wherever the round offers a
    *   choice, and the default for tournaments created here.
-   * - `alternating` uses `reversed` on the first drop round, `balanced` on the
-   *   next, and so on. Challonge draws its brackets this way, so it is what an
-   *   import from there needs.
+   * - `alternating` reverses the first drop round, then reverses and rotates by
+   *   half on the next, and so on. Challonge draws its brackets this way, so it
+   *   is what an import from there needs.
    */
   loserBracketSeeding: 'standard' | 'reversed' | 'balanced' | 'alternating';
   /** Absent on stages created before the setting existed. */

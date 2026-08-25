@@ -537,6 +537,23 @@ describe('drop strategies', () => {
     expect([0, 1, 2, 3].map((i) => dropSlot(i, 4, 'alternating', 3))).toEqual([3, 2, 1, 0]);
   });
 
+  /**
+   * The case that tells `alternating` and `balanced` apart.
+   *
+   * On an even drop round the rule is a reversal *and* a rotation by half. With
+   * four matches that is indistinguishable from swapping neighbours, so a single
+   * bracket can look like evidence for either; with two it is not, and the
+   * rotation lands back on the natural order.
+   */
+  it('rotates rather than swapping neighbours on an even drop round', () => {
+    expect([0, 1].map((i) => dropSlot(i, 2, 'alternating', 2))).toEqual([0, 1]);
+    expect([0, 1].map((i) => dropSlot(i, 2, 'balanced', 2))).toEqual([1, 0]);
+
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map((i) => dropSlot(i, 8, 'alternating', 2))).toEqual([
+      3, 2, 1, 0, 7, 6, 5, 4,
+    ]);
+  });
+
   it('leaves a round with no choice alone', () => {
     for (const seeding of ['standard', 'reversed', 'balanced', 'alternating'] as const) {
       expect(dropSlot(0, 1, seeding, 1)).toBe(0);

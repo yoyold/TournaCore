@@ -168,7 +168,11 @@
       "date": "Datum",
       "status": "Status",
       "dateHint": "Bestimmt, wo das Turnier in der Liste einsortiert wird. Bei Importen aus Challonge fehlt das Datum in den Daten und muss hier nachgetragen werden."
-    }
+    },
+    "searchPlaceholder": "Turnier, Team oder Veranstalter …",
+    "searchCount": "{{count}} von {{total}}",
+    "noMatches": "Nichts gefunden",
+    "noMatchesHint": "Gesucht wird im Turniernamen, im Veranstalter und in den teilnehmenden Teams — auch unter früheren Teamnamen."
   },
   "result": {
     "title": "Ergebnis eintragen",

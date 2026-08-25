@@ -168,7 +168,11 @@
       "date": "Date",
       "status": "Status",
       "dateHint": "Decides where the tournament sits in the list. Challonge imports carry no date, so it has to be entered here."
-    }
+    },
+    "searchPlaceholder": "Tournament, team or organiser …",
+    "searchCount": "{{count}} of {{total}}",
+    "noMatches": "Nothing found",
+    "noMatchesHint": "Searches the tournament name, the organiser and the teams that took part — including names they used to compete under."
   },
   "result": {
     "title": "Record result",
