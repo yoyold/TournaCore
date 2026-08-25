@@ -24,6 +24,8 @@ import {
 } from '@models/index';
 import { uniqueSlug } from '@utils/slug';
 
+import { recordedDraw } from './recordedDraw';
+
 import type { ChallongeMatch, ChallongeParticipant, ChallongeTournament } from './challongeSchema';
 import type { StructuralMatch } from '@domain/formats/types';
 import type { TransferData } from '@services/transfer/transfer';
@@ -449,6 +451,13 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
         .filter((id): id is ParticipantId => id !== undefined)
     : [];
 
+  /*
+   * The line-up the finished draw itself implies. Independent of the numbers the
+   * source attached to its entrants, and therefore the only reading that
+   * survives a source that numbered them after the draw was made.
+   */
+  const drawLineUp = recordedDraw(mainMatches, byChallongeId);
+
   const attached = attachBestVariant({
     tournament,
     stages,
@@ -458,6 +467,7 @@ function convertOne(source: ChallongeTournament, context: ConvertContext): Conve
     options,
     notes,
     ...(recordedOrder.length > 0 ? { qualifierOrder: recordedOrder } : {}),
+    ...(drawLineUp ? { drawLineUp } : {}),
   });
 
   if (hasGroups) {
@@ -594,10 +604,12 @@ function attachBestVariant(input: {
   notes: ReportNote[];
   /** The order the source itself put the qualifiers in, if it recorded one. */
   qualifierOrder?: ParticipantId[];
+  /** The line-up read off the recorded draw, if it describes a complete one. */
+  drawLineUp?: ParticipantId[];
 }): Attached & { stages: Stage[] } {
-  const { stages, notes, qualifierOrder, options } = input;
+  const { stages, notes, qualifierOrder, drawLineUp, options } = input;
 
-  const candidates = variantsOf(stages, qualifierOrder, options.newId);
+  const candidates = variantsOf(stages, { qualifierOrder, drawLineUp }, options.newId);
   const attempts = candidates.map((candidate) => ({
     candidate,
     result: attachResults({ ...input, stages: candidate.stages }),
@@ -625,12 +637,19 @@ function attachBestVariant(input: {
     });
   }
 
-  if (best.candidate.manualSeeding === true) {
+  if (best.candidate.lineUp === 'seeds') {
     notes.push({
       code: 'playoff_seeding_recorded',
       message:
         'The bracket keeps the line-up the source recorded rather than deriving it ' +
         'from the qualifying tables.',
+    });
+  }
+
+  if (best.candidate.lineUp === 'draw') {
+    notes.push({
+      code: 'playoff_seeding_drawn',
+      message: 'The bracket reproduces the draw the source published, position by position.',
     });
   }
 
@@ -641,8 +660,11 @@ interface Variant {
   stages: Stage[];
   dropOrder?: DoubleEliminationConfig['loserBracketSeeding'];
   seedingOrder?: SeedingRule['order'];
-  manualSeeding?: boolean;
+  /** Where a fixed line-up came from: the entrant numbers, or the draw itself. */
+  lineUp?: LineUpSource;
 }
+
+type LineUpSource = 'seeds' | 'draw';
 
 /**
  * The arrangements worth trying for a given set of stages.
@@ -653,7 +675,10 @@ interface Variant {
  */
 function variantsOf(
   stages: readonly Stage[],
-  qualifierOrder: ParticipantId[] | undefined,
+  lineUps: {
+    qualifierOrder?: ParticipantId[] | undefined;
+    drawLineUp?: ParticipantId[] | undefined;
+  },
   newId: () => string,
 ): Variant[] {
   const last = stages.at(-1);
@@ -705,9 +730,23 @@ function variantsOf(
    * a derivation. Where a source re-seeded its qualifiers by hand, no ordering
    * rule reproduces it, and the line-up it wrote down is the only truth
    * available.
+   *
+   * Two readings of "wrote down" are worth trying, because a source that
+   * numbers its entrants only after the draw has been made contradicts the
+   * first: the numbers themselves, and the positions the published draw put
+   * them in.
    */
-  if (qualifierOrder !== undefined && qualifierOrder.length > 0 && stages.length > 0) {
-    for (const base of [...variants]) {
+  const fixed: [LineUpSource, ParticipantId[] | undefined][] = [
+    ['seeds', lineUps.qualifierOrder],
+    ['draw', lineUps.drawLineUp],
+  ];
+
+  const bases = [...variants];
+
+  for (const [lineUp, ids] of fixed) {
+    if (ids === undefined || ids.length === 0 || stages.length === 0) continue;
+
+    for (const base of bases) {
       const withManual = base.stages.map((stage, index) =>
         index === base.stages.length - 1
           ? {
@@ -715,8 +754,8 @@ function variantsOf(
               entrySeeding: [
                 {
                   id: asId<SeedingRule['id']>(newId()),
-                  source: { kind: 'manual' as const, participantIds: [...qualifierOrder] },
-                  targetSlots: { from: 1, to: qualifierOrder.length },
+                  source: { kind: 'manual' as const, participantIds: [...ids] },
+                  targetSlots: { from: 1, to: ids.length },
                   order: 'as_ranked' as const,
                 },
               ],
@@ -724,7 +763,7 @@ function variantsOf(
           : stage,
       );
 
-      variants.push({ ...base, stages: withManual, manualSeeding: true });
+      variants.push({ ...base, stages: withManual, lineUp });
     }
   }
 
