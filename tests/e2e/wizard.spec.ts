@@ -46,11 +46,26 @@ test('will not advance past the basics without a name', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Weiter' })).toBeDisabled();
 });
 
-test('will not advance past participants with fewer than two teams', async ({ page }) => {
+/**
+ * An organiser announces an event before the field is settled, so a tournament
+ * has to exist before it can be drawn. There is no bracket to preview yet, and
+ * the last step says as much rather than showing an empty one.
+ */
+test('creates a tournament whose field is not complete yet', async ({ page }) => {
   await page.goto('./#/tournaments/new');
   await page.getByLabel(/Turniername/).fill('Solo Cup');
   await page.getByRole('button', { name: 'Weiter' }).click();
 
   await page.getByLabel(/Teilnehmer \(einer pro Zeile\)/).fill('Only One Team');
-  await expect(page.getByRole('button', { name: 'Weiter' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await expect(page.getByText('Wird zur Anmeldung angelegt')).toBeVisible();
+  await expect(page.getByRole('group', { name: /Turnierbaum/i })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Turnier erstellen' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Solo Cup', level: 1 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Turnier starten' })).toBeDisabled();
+  await expect(page.getByText('Noch 1 Teilnehmer bis zum Start.')).toBeVisible();
 });

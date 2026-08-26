@@ -11,6 +11,7 @@ import { FlagIcon } from '@components/ui/FlagIcon';
 import { PageHeader } from '@components/ui/PageHeader';
 import { deriveTournamentState, type DerivedStage } from '@domain/derive';
 import { isBracketFormat } from '@domain/formats/registry';
+import { TeamSelectionList } from '@pages/TeamSelectionList';
 import {
   assembleTournament,
   type BestOf,
@@ -18,10 +19,11 @@ import {
   type TournamentDraft,
 } from '@services/tournament/assembleTournament';
 import { parseParticipants } from '@services/tournament/parseParticipants';
+import { composeField } from '@services/tournament/registration';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
-import type { Match, MatchId, Team } from '@models/index';
+import type { Match, MatchId, Team, TeamId } from '@models/index';
 import type { TFunction } from 'i18next';
 
 const BEST_OF_OPTIONS: BestOf[] = [1, 3, 5, 7];
@@ -36,6 +38,9 @@ interface DraftState {
   organizer: string;
   startsAt: string;
   description: string;
+  /** Entrants chosen from the teams already on record, in the order picked. */
+  pickedTeamIds: TeamId[];
+  /** Entrants typed rather than picked. Only these bring a new team into being. */
   participantsText: string;
   formatKind: FormatKind;
   thirdPlaceMatch: boolean;
@@ -58,6 +63,7 @@ const INITIAL: DraftState = {
   organizer: '',
   startsAt: '',
   description: '',
+  pickedTeamIds: [],
   participantsText: '',
   formatKind: 'single_elimination',
   thirdPlaceMatch: false,
@@ -98,13 +104,15 @@ export function TournamentWizardPage() {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
+  const typed = useMemo(() => parseParticipants(draft.participantsText), [draft.participantsText]);
+
   const participants = useMemo(
-    () => parseParticipants(draft.participantsText),
-    [draft.participantsText],
+    () => composeField(draft.pickedTeamIds, (id) => teams[id], typed),
+    [draft.pickedTeamIds, teams, typed],
   );
 
   const assembled = useMemo(() => {
-    if (draft.name.trim() === '' || participants.length < 2) return undefined;
+    if (draft.name.trim() === '') return undefined;
 
     const startsAt = draft.startsAt ? new Date(draft.startsAt).toISOString() : undefined;
     const input: TournamentDraft = {
@@ -150,8 +158,7 @@ export function TournamentWizardPage() {
     };
   }, [teams, assembled]);
 
-  const canAdvance =
-    step === 0 ? draft.name.trim() !== '' : step === 1 ? participants.length >= 2 : true;
+  const canAdvance = step === 0 ? draft.name.trim() !== '' : true;
 
   const onCreate = async (): Promise<void> => {
     if (!assembled) return;
@@ -178,13 +185,23 @@ export function TournamentWizardPage() {
             onChange={(value) => {
               set('participantsText', value);
             }}
+            pickedTeamIds={draft.pickedTeamIds}
+            onTogglePicked={(teamId) => {
+              set(
+                'pickedTeamIds',
+                draft.pickedTeamIds.includes(teamId)
+                  ? draft.pickedTeamIds.filter((entry) => entry !== teamId)
+                  : [...draft.pickedTeamIds, teamId],
+              );
+            }}
             participants={participants}
           />
         )}
         {step === 2 && (
           <FormatStep draft={draft} set={set} participantCount={participants.length} />
         )}
-        {step === 3 && previewStage && (
+        {step === 3 && participants.length < 2 && <RegistrationStep count={participants.length} />}
+        {step === 3 && participants.length >= 2 && previewStage && (
           <PreviewStep
             stage={previewStage}
             teamOf={previewTeamOf}
@@ -353,33 +370,51 @@ function BasicsStep({ draft, set }: StepProps) {
 function ParticipantsStep({
   value,
   onChange,
+  pickedTeamIds,
+  onTogglePicked,
   participants,
 }: {
   value: string;
   onChange: (value: string) => void;
+  pickedTeamIds: readonly TeamId[];
+  onTogglePicked: (teamId: TeamId) => void;
   participants: ReturnType<typeof parseParticipants>;
 }) {
   const { t } = useTranslation();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
-        <CardBody className="grid gap-2">
-          <label htmlFor="participants" className="text-sm font-medium text-fg">
-            {t('wizard.field.participants')}
-          </label>
-          <p className="text-xs text-fg-secondary">{t('wizard.participantsHint')}</p>
-          <textarea
-            id="participants"
-            value={value}
-            rows={12}
-            placeholder={'Nova Collective, DE\nIron Meridian, US\nSolstice Nine'}
-            onChange={(e) => {
-              onChange(e.target.value);
-            }}
-            className={cn(inputClass, 'resize-y font-mono text-xs')}
-          />
-        </CardBody>
-      </Card>
+      {/*
+        Two ways into the field, and the order says which is preferred: pick a
+        club that already exists, and type only what does not. A name typed
+        almost right is what fills an archive with near-duplicates.
+      */}
+      <div className="grid gap-4">
+        <Card>
+          <CardBody className="grid gap-2">
+            <span className="text-sm font-medium text-fg">{t('wizard.field.knownTeams')}</span>
+            <p className="text-xs text-fg-secondary">{t('wizard.knownTeamsHint')}</p>
+            <TeamSelectionList selected={pickedTeamIds} onToggle={onTogglePicked} />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="grid gap-2">
+            <label htmlFor="participants" className="text-sm font-medium text-fg">
+              {t('wizard.field.participants')}
+            </label>
+            <p className="text-xs text-fg-secondary">{t('wizard.participantsHint')}</p>
+            <textarea
+              id="participants"
+              value={value}
+              rows={8}
+              placeholder={'Nova Collective, DE\nIron Meridian, US\nSolstice Nine'}
+              onChange={(e) => {
+                onChange(e.target.value);
+              }}
+              className={cn(inputClass, 'resize-y font-mono text-xs')}
+            />
+          </CardBody>
+        </Card>
+      </div>
 
       <Card>
         <CardBody>
@@ -407,6 +442,27 @@ function ParticipantsStep({
         </CardBody>
       </Card>
     </div>
+  );
+}
+
+/**
+ * What the last step says when the field is not drawable yet.
+ *
+ * There is no bracket to preview, and an empty one would read as something
+ * having gone wrong. The tournament is created open for entries instead, and
+ * saying so here makes that an intention rather than a surprise.
+ */
+function RegistrationStep({ count }: { count: number }) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <CardBody className="grid gap-2 py-10 text-center">
+        <p className="text-sm font-medium text-fg">{t('wizard.registrationTitle')}</p>
+        <p className="mx-auto max-w-md text-sm text-fg-secondary">
+          {t('wizard.registrationHint', { count })}
+        </p>
+      </CardBody>
+    </Card>
   );
 }
 

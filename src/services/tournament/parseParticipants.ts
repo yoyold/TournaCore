@@ -1,7 +1,17 @@
+import type { TeamId } from '@models/index';
+
 export interface ParsedParticipant {
   name: string;
   /** ISO 3166-1 alpha-2, when a trailing country code was given. */
   countryCode?: string;
+  /**
+   * The team this entry stands for, when it was picked rather than typed.
+   *
+   * Matching a typed name against the known teams is a guess that a rename or a
+   * second spelling defeats. Where the organiser chose from the list there is
+   * nothing to guess, and the identity travels with the entry.
+   */
+  teamId?: TeamId;
 }
 
 const TRAILING_COUNTRY = /^(.*?),\s*([A-Za-z]{2})$/;

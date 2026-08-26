@@ -114,10 +114,15 @@ export function assembleTournament(
   const timestamp = now();
 
   const teamsByName = new Map(context.existingTeams.map((team) => [team.name.toLowerCase(), team]));
+  const teamsById = new Map(context.existingTeams.map((team) => [team.id, team]));
   const newTeams: Team[] = [];
 
   const participants: Participant[] = draft.participants.map((parsed, index) => {
-    const existing = teamsByName.get(parsed.name.toLowerCase());
+    // An entry picked from the known teams names its team outright; a typed one
+    // is matched by name, which is what lets a pasted list reuse them.
+    const existing =
+      (parsed.teamId === undefined ? undefined : teamsById.get(parsed.teamId)) ??
+      teamsByName.get(parsed.name.toLowerCase());
     const team = existing ?? createTeam(parsed, timestamp);
     if (!existing) {
       newTeams.push(team);
@@ -142,7 +147,13 @@ export function assembleTournament(
     name: draft.name.trim(),
     slug: uniqueSlug(draft.name, context.existingSlugs),
     gameId,
-    status: 'live',
+    /*
+     * A field of fewer than two cannot be drawn, so the tournament is created
+     * open for entries instead of started. That is the whole point of a
+     * registration phase: the event exists, and is announced, before the field
+     * that will play it is known.
+     */
+    status: participants.length >= 2 ? 'live' : 'registration',
     participants,
     stageIds: stages.map((stage) => stage.id),
     createdAt: timestamp,

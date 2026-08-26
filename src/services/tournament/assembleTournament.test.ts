@@ -258,3 +258,59 @@ describe('assembleTournament with league and group formats', () => {
 function names(count: number) {
   return Array.from({ length: count }, (_, i) => ({ name: `Team ${String(i + 1)}` }));
 }
+
+/**
+ * A tournament exists before its field does, so every format has to assemble
+ * and derive from nothing. The wizard runs the real derivation to build its
+ * preview, so a format that cannot cope with an empty field takes the page down
+ * on the way to creating one.
+ */
+describe('a tournament created before its field is known', () => {
+  const formats: TournamentDraft['format'][] = [
+    { kind: 'single_elimination', thirdPlaceMatch: true, defaultBestOf: 3, finalBestOf: 5 },
+    { kind: 'double_elimination', grandFinal: 'bracket_reset', defaultBestOf: 3, finalBestOf: 5 },
+    { kind: 'swiss', rounds: 5, defaultBestOf: 3 },
+    { kind: 'round_robin', legs: 2, defaultBestOf: 3 },
+    {
+      kind: 'group_stage',
+      groupCount: 4,
+      legs: 1,
+      defaultBestOf: 3,
+      advancePerGroup: 2,
+      playoffBestOf: 3,
+      playoffFinalBestOf: 5,
+    },
+  ];
+
+  for (const format of formats) {
+    it(`assembles and derives ${format.kind} with no participants`, () => {
+      const result = assembleTournament(draft({ participants: [], format }), emptyContext);
+
+      expect(result.tournament.status).toBe('registration');
+      expect(result.tournament.participants).toEqual([]);
+
+      const state = deriveTournamentState({
+        tournament: result.tournament,
+        stages: result.stages,
+        matches: [],
+      });
+
+      // Nothing is drawn, and nothing pretends to have been played.
+      expect(state.stages[0]?.resolved.matches.every((match) => match.isBye)).toBe(true);
+    });
+  }
+
+  it('goes live as soon as the field can be drawn', () => {
+    const two = [{ name: 'Nova Collective' }, { name: 'Iron Meridian' }];
+    expect(assembleTournament(draft({ participants: two }), emptyContext).tournament.status).toBe(
+      'live',
+    );
+  });
+
+  it('stays open for entries with a single entrant', () => {
+    const one = [{ name: 'Nova Collective' }];
+    expect(assembleTournament(draft({ participants: one }), emptyContext).tournament.status).toBe(
+      'registration',
+    );
+  });
+});

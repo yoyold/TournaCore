@@ -24,8 +24,10 @@ import {
   writeMeta,
 } from '@services/db';
 import { mergeTeams as merge } from '@services/team/mergeTeams';
+import { applyField, fieldOf, resizeEntrySlots } from '@services/tournament/registration';
 
 import type { AssembledTournament } from '@services/tournament/assembleTournament';
+import type { ParsedParticipant } from '@services/tournament/parseParticipants';
 import type { ImportMode, TransferData } from '@services/transfer/transfer';
 
 type ById<TId extends string, TEntity> = Record<TId, TEntity>;
@@ -53,6 +55,27 @@ export interface DataState {
 
   /** Persists a freshly assembled tournament together with its new teams and game. */
   createTournament: (assembled: AssembledTournament) => Promise<void>;
+
+  /**
+   * Rewrites the field of a tournament that has not been drawn yet.
+   *
+   * Takes a change to apply rather than the finished list. Adding an entrant is
+   * one click among several, and a caller that hands over a whole list has
+   * necessarily built it from what it last saw — so two quick clicks would file
+   * the second over the first. The update runs against what is stored at the
+   * moment it runs, and calls are queued so that moment is well defined.
+   *
+   * Entries typed rather than picked bring their team into existence, and the
+   * stages follow the new size. Everything else about the draw is derived, so
+   * there is nothing further to keep in step.
+   */
+  setField: (
+    id: TournamentId,
+    update: (current: ParsedParticipant[]) => ParsedParticipant[],
+  ) => Promise<void>;
+
+  /** Draws the tournament and opens it for results. */
+  startTournament: (id: TournamentId) => Promise<void>;
 
   /** Everything currently held, for export. */
   snapshot: () => TransferData;
@@ -112,6 +135,12 @@ function omit<TId extends string, TEntity>(
  * and with no server-side backup a silently lost write is unrecoverable.
  */
 export const useDataStore = create<DataState>()((set, get) => {
+  /*
+   * Field edits run one after another. Each reads the stored field when its turn
+   * comes, so a burst of clicks composes instead of the last one winning.
+   */
+  let queue: Promise<void> = Promise.resolve();
+
   /** Runs a persisting action and records failures instead of throwing at the UI. */
   const guard = async (action: () => Promise<void>): Promise<void> => {
     try {
@@ -220,6 +249,60 @@ export const useDataStore = create<DataState>()((set, get) => {
           tournaments: { ...state.tournaments, [assembled.tournament.id]: assembled.tournament },
           stages: { ...state.stages, ...index(assembled.stages) },
         }));
+      });
+    },
+
+    setField: async (id, update) => {
+      queue = queue.then(async () => {
+        await guard(async () => {
+          const state = get();
+          const tournament = state.tournaments[id];
+          if (!tournament) return;
+
+          const current = fieldOf(tournament.participants, (teamId) => state.teams[teamId]);
+
+          const { participants, newTeams } = applyField(
+            update(current),
+            tournament.participants,
+            Object.values(state.teams),
+          );
+
+          const stages = tournament.stageIds
+            .map((stageId) => state.stages[stageId])
+            .filter((stage): stage is Stage => stage !== undefined);
+
+          const timestamp = now();
+          const resized = resizeEntrySlots(stages, participants.length)
+            // Untouched stages are returned as they were, so comparing by
+            // identity keeps a write to one stage from touching every other.
+            .filter((stage, position) => stage !== stages[position])
+            .map((stage) => ({ ...stage, updatedAt: timestamp }));
+
+          const next = { ...tournament, participants, updatedAt: timestamp };
+
+          if (newTeams.length > 0) await teamRepository.putMany(newTeams);
+          await tournamentRepository.put(next);
+          if (resized.length > 0) await stageRepository.putMany(resized);
+
+          set((latest) => ({
+            teams: { ...latest.teams, ...index(newTeams) },
+            tournaments: { ...latest.tournaments, [next.id]: next },
+            stages: { ...latest.stages, ...index(resized) },
+          }));
+        });
+      });
+
+      await queue;
+    },
+
+    startTournament: async (id) => {
+      await guard(async () => {
+        const tournament = get().tournaments[id];
+        if (!tournament) return;
+
+        const next = { ...tournament, status: 'live' as const, updatedAt: now() };
+        await tournamentRepository.put(next);
+        set((state) => ({ tournaments: { ...state.tournaments, [next.id]: next } }));
       });
     },
 

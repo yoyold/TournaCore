@@ -1,5 +1,5 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -9,6 +9,8 @@ import { PageHeader } from '@components/ui/PageHeader';
 import { ELO_START, PROVISIONAL_BELOW } from '@domain/statistics/elo';
 import { useEloLeaderboard } from '@hooks/useEloRatings';
 import { useAllTeamStatistics } from '@hooks/useTeamStatistics';
+import { RegionFilterSelect } from '@pages/RegionFilterSelect';
+import { passesRegion, type RegionFilter } from '@services/team/regions';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
@@ -108,6 +110,31 @@ function EloTab() {
   const teams = useDataStore((s) => s.teams);
   const hydrated = useDataStore((s) => s.hydrated);
   const leaderboard = useEloLeaderboard();
+  const [region, setRegion] = useState<RegionFilter>('all');
+
+  /*
+   * Rated teams only. A region nobody on the board plays in would be a filter
+   * that can only ever empty the table.
+   */
+  const rated = useMemo(
+    () =>
+      leaderboard
+        .map((entry) => teams[entry.teamId])
+        .filter((team): team is NonNullable<typeof team> => team !== undefined),
+    [leaderboard, teams],
+  );
+
+  /*
+   * Ranks are those of the whole board, not of the filtered view: a team is
+   * eleventh overall whether or not the other ten are on screen.
+   */
+  const ranked = useMemo(
+    () =>
+      leaderboard
+        .map((entry, position) => ({ entry, rank: position + 1 }))
+        .filter((row) => passesRegion(teams[row.entry.teamId], region)),
+    [leaderboard, teams, region],
+  );
 
   if (!hydrated) return <p className="text-sm text-fg-muted">{t('common.loading')}</p>;
 
@@ -124,9 +151,12 @@ function EloTab() {
 
   return (
     <>
-      <p className="mb-3 text-xs text-fg-secondary">
-        {t('statistics.eloExplainer', { start: ELO_START, provisional: PROVISIONAL_BELOW })}
-      </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-fg-secondary">
+          {t('statistics.eloExplainer', { start: ELO_START, provisional: PROVISIONAL_BELOW })}
+        </p>
+        <RegionFilterSelect teams={rated} value={region} onChange={setRegion} />
+      </div>
 
       <Card>
         <CardBody className="p-0">
@@ -155,11 +185,11 @@ function EloTab() {
               </tr>
             </thead>
             <tbody>
-              {leaderboard.map((entry, index) => {
+              {ranked.map(({ entry, rank }) => {
                 const team = teams[entry.teamId];
                 return (
                   <tr key={entry.teamId} className="border-b border-line last:border-b-0">
-                    <td className="tabular px-4 py-2 text-fg-muted">{index + 1}</td>
+                    <td className="tabular px-4 py-2 text-fg-muted">{rank}</td>
                     <td className="px-4 py-2">
                       <span className="flex items-center gap-2">
                         {team?.countryCode !== undefined && (

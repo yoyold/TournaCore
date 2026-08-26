@@ -35,7 +35,8 @@
     "loading": "Wird geladen …",
     "skipToContent": "Zum Inhalt springen",
     "yes": "Ja",
-    "no": "Nein"
+    "no": "Nein",
+    "add": "Hinzufügen"
   },
   "placeholder": {
     "inDevelopment": "Diese Ansicht befindet sich in Entwicklung"
@@ -219,7 +220,8 @@
       "advancePerGroup": "Qualifiziert je Gruppe (0 = keine Playoffs)",
       "legs": "Spielmodus",
       "bracketReset": "Bracket Reset im Grand Final",
-      "swissRounds": "Runden"
+      "swissRounds": "Runden",
+      "knownTeams": "Bekannte Teams"
     },
     "formatLegend": "Turnierformat",
     "format": {
@@ -246,7 +248,13 @@
     "bracketResetHint": "Wer aus dem Verliererbaum kommt, muss zweimal gewinnen.",
     "swissRoundsHint": "Für dieses Feld werden mindestens {{rounds}} Runden empfohlen.",
     "previewSwiss": "{{rounds}} Runden",
-    "previewSingleGrandFinal": "Ein Grand Final"
+    "previewSingleGrandFinal": "Ein Grand Final",
+    "knownTeamsHint": "Teams aus dem Archiv auswählen. Nur das Freitextfeld darunter legt ein neues Team an.",
+    "searchTeams": "Teams durchsuchen",
+    "noKnownTeams": "Noch keine Teams im Archiv. Trage sie unten als Freitext ein.",
+    "registrationTitle": "Wird zur Anmeldung angelegt",
+    "registrationHint": "Erst {{count}} Teilnehmer eingetragen. Das Turnier wird angelegt und ausgelost, sobald das Feld steht.",
+    "registrationHint_one": "Erst {{count}} Teilnehmer eingetragen. Das Turnier wird angelegt und ausgelost, sobald das Feld steht."
   },
   "teams": {
     "create": "Team anlegen",
@@ -298,7 +306,10 @@
       "confirmDetail": "{{count}} Turniereintrag/-einträge werden übertragen. Kein Ergebnis wird geändert.",
       "confirmAction": "Endgültig zusammenführen",
       "formerNames": "Früher auch"
-    }
+    },
+    "region": "Region",
+    "regionAll": "Alle Regionen",
+    "regionNone": "Ohne Region"
   },
   "statistics": {
     "tab": {
@@ -422,5 +433,17 @@
       "round_difference": "RD",
       "seed": "S"
     }
+  },
+  "registration": {
+    "addNew": "Neues Team",
+    "addNewHint": "Name, optional mit Ländercode: „Nova Collective, DE“.",
+    "start": "Turnier starten",
+    "startHint": "Die Auslosung entsteht beim Start aus der Reihenfolge des Feldes.",
+    "needMore": "Noch {{count}} Teilnehmer bis zum Start.",
+    "needMore_one": "Noch {{count}} Teilnehmer bis zum Start.",
+    "moveUp": "{{name}} nach oben",
+    "moveDown": "{{name}} nach unten",
+    "remove": "{{name}} entfernen",
+    "field": "Teilnehmerfeld"
   }
 }

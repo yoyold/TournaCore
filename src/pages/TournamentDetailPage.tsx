@@ -15,6 +15,7 @@ import { isBracketFormat } from '@domain/formats/registry';
 import { useDerivedTournament } from '@hooks/useDerivedTournament';
 import { asId, type Match, type MatchId, type TournamentId } from '@models/index';
 import { BracketArrangementControl } from '@pages/BracketArrangementControl';
+import { RegistrationPanel } from '@pages/RegistrationPanel';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
@@ -46,6 +47,19 @@ export function TournamentDetailPage() {
   );
 
   const stage = state?.stages[selectedStage];
+
+  /**
+   * A tournament still open for entries has no draw to show yet.
+   *
+   * A recorded result settles it whatever the status says. Status is editable,
+   * and a result names a position in the draw rather than a pairing — so
+   * reopening a played tournament and changing its field would quietly reassign
+   * every result to whoever now stands in that position.
+   */
+  const started =
+    tournament !== undefined &&
+    (Object.values(matches).some((match) => match.tournamentId === tournament.id) ||
+      (tournament.status !== 'registration' && tournament.status !== 'draft'));
 
   /**
    * How many places of this stage carry over, read from the following stage's
@@ -142,14 +156,21 @@ export function TournamentDetailPage() {
 
       <div className="mb-5 flex flex-wrap items-center gap-4 text-xs text-fg-secondary">
         <span>{t('tournaments.participantCount', { count: tournament.participants.length })}</span>
-        {state.isComplete && (
+        {/*
+          A tournament that has not been drawn has no matches, which is not the
+          same as having played them all — and saying so would be a plain lie
+          about an event that has not started.
+        */}
+        {started && state.isComplete && (
           <span className="rounded-full bg-success/15 px-2 py-0.5 font-medium text-success">
             {t('tournaments.completed')}
           </span>
         )}
       </div>
 
-      {state.stages.length > 1 && (
+      {!started && <RegistrationPanel tournament={tournament} />}
+
+      {started && state.stages.length > 1 && (
         <div role="tablist" className="mb-4 flex gap-1 border-b border-line">
           {state.stages.map((entry, index) => (
             <button
@@ -180,7 +201,7 @@ export function TournamentDetailPage() {
         so the thing that changes must stay in view.
       */}
       <div className={cn('grid gap-4', selection && 'lg:grid-cols-[1fr_380px]')}>
-        {stage && (
+        {started && stage && (
           <div className="grid min-w-0 gap-4">
             {/*
               A bracket is the right picture for a knockout and the wrong one for
@@ -244,7 +265,7 @@ export function TournamentDetailPage() {
           </div>
         )}
 
-        {selection && stage && (
+        {started && selection && stage && (
           <div className="min-w-0 overflow-hidden rounded-[var(--radius-card)] border border-line lg:max-h-[70vh]">
             <MatchResultSheet
               // Remounts on a different match, so the draft starts fresh.

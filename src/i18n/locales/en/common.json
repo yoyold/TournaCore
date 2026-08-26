@@ -35,7 +35,8 @@
     "loading": "Loading …",
     "skipToContent": "Skip to content",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "add": "Add"
   },
   "placeholder": {
     "inDevelopment": "This view is under development"
@@ -219,7 +220,8 @@
       "advancePerGroup": "Advancing per group (0 = no playoffs)",
       "legs": "Schedule",
       "bracketReset": "Bracket reset in the grand final",
-      "swissRounds": "Rounds"
+      "swissRounds": "Rounds",
+      "knownTeams": "Known teams"
     },
     "formatLegend": "Tournament format",
     "format": {
@@ -246,7 +248,13 @@
     "bracketResetHint": "The loser bracket winner has to win twice.",
     "swissRoundsHint": "At least {{rounds}} rounds are recommended for this field.",
     "previewSwiss": "{{rounds}} rounds",
-    "previewSingleGrandFinal": "A single grand final"
+    "previewSingleGrandFinal": "A single grand final",
+    "knownTeamsHint": "Pick teams from the archive. Only the free-text field below creates a new one.",
+    "searchTeams": "Search teams",
+    "noKnownTeams": "No teams on record yet. Enter them as free text below.",
+    "registrationTitle": "Created open for entries",
+    "registrationHint": "Only {{count}} entrants so far. The tournament is created now and drawn once the field is complete.",
+    "registrationHint_one": "Only {{count}} entrant so far. The tournament is created now and drawn once the field is complete."
   },
   "teams": {
     "create": "Add team",
@@ -298,7 +306,10 @@
       "confirmDetail": "{{count}} tournament entr(ies) will be moved. No result is changed.",
       "confirmAction": "Merge for good",
       "formerNames": "Formerly"
-    }
+    },
+    "region": "Region",
+    "regionAll": "All regions",
+    "regionNone": "No region"
   },
   "statistics": {
     "tab": {
@@ -422,5 +433,17 @@
       "round_difference": "RD",
       "seed": "S"
     }
+  },
+  "registration": {
+    "addNew": "New team",
+    "addNewHint": "A name, optionally with a country code: \"Nova Collective, DE\".",
+    "start": "Start tournament",
+    "startHint": "The draw is made on start, from the order of the field.",
+    "needMore": "{{count}} more entrants needed to start.",
+    "needMore_one": "{{count}} more entrant needed to start.",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "remove": "Remove {{name}}",
+    "field": "Field of entrants"
   }
 }
