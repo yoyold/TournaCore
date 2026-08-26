@@ -46,15 +46,37 @@ jobs:
 
       - name: Check bundle budget
         run: |
-          # Sum of all initial JS and CSS assets, gzipped.
-          BUDGET_KB=250
+          # Two budgets, because they answer different questions.
+          #
+          # What a first visit costs is the initial payload: exactly the assets
+          # index.html references. Routes are loaded on demand and are not part
+          # of it — summing them in makes the figure grow with every page added,
+          # which penalises features rather than protecting load time.
+          #
+          # The total still has a ceiling, so a chunk cannot quietly balloon
+          # just because nothing downloads it up front.
+          INITIAL_KB=200
+          TOTAL_KB=300
+
+          INITIAL=$(grep -o 'assets/[^"]*' dist/index.html | sort -u \
+            | while read -r asset; do gzip -c "dist/${asset}" | wc -c; done \
+            | awk '{s+=$1} END {print int(s/1024)}')
           TOTAL=$(find dist/assets -type f \( -name '*.js' -o -name '*.css' \) \
             -exec sh -c 'gzip -c "$1" | wc -c' _ {} \; | awk '{s+=$1} END {print int(s/1024)}')
-          echo "Total (gzip): ${TOTAL} kB — budget: ${BUDGET_KB} kB"
-          if [ "$TOTAL" -gt "$BUDGET_KB" ]; then
-            echo "::error::Bundle budget exceeded: ${TOTAL} kB > ${BUDGET_KB} kB"
-            exit 1
+
+          echo "Initial (gzip): ${INITIAL} kB — budget: ${INITIAL_KB} kB"
+          echo "Total   (gzip): ${TOTAL} kB — budget: ${TOTAL_KB} kB"
+
+          STATUS=0
+          if [ "$INITIAL" -gt "$INITIAL_KB" ]; then
+            echo "::error::Initial payload budget exceeded: ${INITIAL} kB > ${INITIAL_KB} kB"
+            STATUS=1
           fi
+          if [ "$TOTAL" -gt "$TOTAL_KB" ]; then
+            echo "::error::Total bundle budget exceeded: ${TOTAL} kB > ${TOTAL_KB} kB"
+            STATUS=1
+          fi
+          exit $STATUS
 
       - name: Check dependency licenses
         run: npm run licenses

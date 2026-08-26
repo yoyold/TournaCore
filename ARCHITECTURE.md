@@ -681,7 +681,8 @@ data, while components are reusable and presentational. Without that split,
 
 | Metric                             | Target                                 | Enforced by      |
 | ---------------------------------- | -------------------------------------- | ---------------- |
-| Initial bundle (gzip)              | < 250 kB                               | CI build step    |
+| Initial payload (gzip)             | < 200 kB                               | CI build step    |
+| All chunks together (gzip)         | < 300 kB                               | CI build step    |
 | Bracket render, 128 teams          | < 100 ms, 60 fps on pan and zoom       | manual profiling |
 | Tournament derivation, 256 matches | < 16 ms                                | benchmark        |
 | Domain layer coverage              | > 90% branches                         | Vitest threshold |
@@ -690,6 +691,13 @@ data, while components are reusable and presentational. Without that split,
 The coverage gate applies to the domain layer only. A bug in tournament
 progression corrupts a running tournament and cannot be repaired by the user,
 whereas a UI bug is merely annoying.
+
+The two size budgets answer different questions. What a visitor waits for is
+the initial payload — the assets `index.html` references, and nothing else,
+because routes are loaded on demand. Measuring every chunk instead would make
+the figure grow with each page added, so the number would punish features
+rather than protect load time. The total keeps its own ceiling so that a chunk
+nobody downloads up front still cannot balloon unnoticed.
 
 ---
 
