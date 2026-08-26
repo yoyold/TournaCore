@@ -221,7 +221,8 @@
       "legs": "Spielmodus",
       "bracketReset": "Bracket Reset im Grand Final",
       "swissRounds": "Runden",
-      "knownTeams": "Bekannte Teams"
+      "knownTeams": "Bekannte Teams",
+      "playoffFormat": "Playoff-Modus"
     },
     "formatLegend": "Turnierformat",
     "format": {
@@ -244,7 +245,7 @@
     },
     "previewDetail": "Ausgestaltung",
     "previewGroupsOnly": "{{groups}} Gruppen, keine K.-o.-Runde",
-    "previewGroupsWithPlayoffs": "{{groups}} Gruppen, die besten {{advance}} je Gruppe erreichen die Playoffs",
+    "previewGroupsWithPlayoffs": "{{groups}} Gruppen, die besten {{advance}} je Gruppe erreichen die Playoffs ({{playoff}})",
     "bracketResetHint": "Wer aus dem Verliererbaum kommt, muss zweimal gewinnen.",
     "swissRoundsHint": "Für dieses Feld werden mindestens {{rounds}} Runden empfohlen.",
     "previewSwiss": "{{rounds}} Runden",
@@ -254,7 +255,8 @@
     "noKnownTeams": "Noch keine Teams im Archiv. Trage sie unten als Freitext ein.",
     "registrationTitle": "Wird zur Anmeldung angelegt",
     "registrationHint": "Erst {{count}} Teilnehmer eingetragen. Das Turnier wird angelegt und ausgelost, sobald das Feld steht.",
-    "registrationHint_one": "Erst {{count}} Teilnehmer eingetragen. Das Turnier wird angelegt und ausgelost, sobald das Feld steht."
+    "registrationHint_one": "Erst {{count}} Teilnehmer eingetragen. Das Turnier wird angelegt und ausgelost, sobald das Feld steht.",
+    "playoffFormatHint": "Nach der Gruppenphase hat jedes Team schon mehrere Spiele. Ob eine einzige Niederlage dann alles entscheidet, ist eine echte Wahl."
   },
   "teams": {
     "create": "Team anlegen",

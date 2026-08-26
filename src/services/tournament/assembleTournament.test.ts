@@ -255,6 +255,106 @@ describe('assembleTournament with league and group formats', () => {
   });
 });
 
+/**
+ * Groups feeding a double elimination playoff.
+ *
+ * The shape asserted here is the one a real event of this kind produces: eight
+ * groups of six, the top two of each into a sixteen-team bracket. A group stage
+ * has already given everyone five games, so letting a single defeat end the
+ * event is a choice rather than the only option — and the engine needed no
+ * change to allow it, because the two stages are linked by a seeding rule
+ * rather than by a format that knows about both.
+ */
+describe('a group stage feeding a double elimination playoff', () => {
+  const eightGroupsOf6 = (
+    overrides: Partial<Extract<TournamentDraft['format'], { kind: 'group_stage' }>> = {},
+  ) =>
+    assembleTournament(
+      draft({
+        participants: names(48),
+        format: {
+          kind: 'group_stage',
+          groupCount: 8,
+          legs: 1,
+          defaultBestOf: 3,
+          advancePerGroup: 2,
+          playoffBestOf: 3,
+          playoffFinalBestOf: 5,
+          playoffFormat: 'double_elimination',
+          ...overrides,
+        },
+      }),
+      emptyContext,
+    );
+
+  const roundsOf = (result: ReturnType<typeof assembleTournament>, bracket: string) =>
+    deriveTournamentState({
+      tournament: result.tournament,
+      stages: result.stages,
+      matches: [],
+    })
+      .stages[1]!.structure.rounds.filter((round) => round.bracket === bracket)
+      .map((round) => round.matchCount);
+
+  it('builds a loser bracket for the qualifiers', () => {
+    const result = eightGroupsOf6();
+    const playoffs = result.stages[1]!;
+
+    expect(playoffs.format).toMatchObject({
+      kind: 'double_elimination',
+      grandFinal: 'bracket_reset',
+    });
+    expect(playoffs.entrySeeding[0]!.targetSlots).toEqual({ from: 1, to: 16 });
+
+    // Sixteen qualifiers: the winner bracket halves each round, the loser
+    // bracket alternates between taking casualties and playing them off.
+    expect(roundsOf(result, 'winner')).toEqual([8, 4, 2, 1]);
+    expect(roundsOf(result, 'loser')).toEqual([4, 4, 2, 2, 1, 1]);
+    expect(roundsOf(result, 'grand_final')).toEqual([1, 1]);
+  });
+
+  it('can end the grand final in one match', () => {
+    const result = eightGroupsOf6({ playoffGrandFinal: 'single' });
+    expect(result.stages[1]!.format).toMatchObject({ grandFinal: 'single' });
+    expect(roundsOf(result, 'grand_final')).toEqual([1]);
+  });
+
+  /** Group winners and runners-up are spread, so no group is replayed at once. */
+  it('keeps the qualifiers of one group apart in the first round', () => {
+    const result = eightGroupsOf6();
+    const rule = result.stages[1]!.entrySeeding[0]!;
+    expect(rule.order).toBe('snake');
+    expect(rule.source).toMatchObject({ kind: 'group_standings', placeRange: { from: 1, to: 2 } });
+  });
+
+  it('leaves a group stage without playoffs alone', () => {
+    const result = eightGroupsOf6({ advancePerGroup: 0 });
+    expect(result.stages).toHaveLength(1);
+    expect(result.stages[0]!.format.kind).toBe('group_stage');
+  });
+
+  /** Stages drawn before the setting existed keep the bracket they were given. */
+  it('still builds a single elimination playoff when none is chosen', () => {
+    const result = assembleTournament(
+      draft({
+        participants: names(48),
+        format: {
+          kind: 'group_stage',
+          groupCount: 8,
+          legs: 1,
+          defaultBestOf: 3,
+          advancePerGroup: 2,
+          playoffBestOf: 3,
+          playoffFinalBestOf: 5,
+        },
+      }),
+      emptyContext,
+    );
+
+    expect(result.stages[1]!.format.kind).toBe('single_elimination');
+  });
+});
+
 function names(count: number) {
   return Array.from({ length: count }, (_, i) => ({ name: `Team ${String(i + 1)}` }));
 }

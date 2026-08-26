@@ -92,6 +92,55 @@ test('creates a group stage feeding a knockout', async ({ page }) => {
   await expect(page.getByRole('group', { name: /Turnierbaum/i })).toBeVisible();
 });
 
+/**
+ * A group stage has already given every team several games, so ending the event
+ * on a single defeat is a choice rather than the only option. The playoff
+ * bracket is therefore configurable, and the engine needed nothing new for it:
+ * the two stages are linked by a seeding rule either way.
+ */
+test('sends the qualifiers into a double elimination playoff', async ({ page }) => {
+  await startWizard(page, 'Split Championship');
+
+  await page.getByRole('radio', { name: /Gruppenphase/ }).check();
+  await page.getByLabel(/Anzahl Gruppen/).fill('2');
+  await page.getByLabel(/Qualifiziert je Gruppe/).fill('2');
+
+  // The playoff radio is labelled by the format alone; the tournament format
+  // above carries a description in the same label.
+  await page.getByRole('radio', { name: 'Doppel-K.-o.', exact: true }).check();
+  // Choosing it reveals the setting only a double elimination bracket has.
+  await expect(page.getByText('Bracket Reset im Grand Final')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  // The summary names the playoff bracket, so the choice is visible before it
+  // is acted on.
+  await expect(page.getByText('(Doppel-K.-o.)')).toBeVisible();
+  await page.getByRole('button', { name: 'Turnier erstellen' }).click();
+  await expect(page.getByRole('heading', { name: 'Split Championship', level: 1 })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Playoffs' }).click();
+  const bracket = page.getByRole('group', { name: /Turnierbaum/i });
+  await expect(bracket).toBeVisible();
+
+  // The loser bracket is the whole difference, and only this format has one.
+  await expect(bracket.getByText(/loser bracket/i)).toBeVisible();
+  await expect(bracket.getByText(/winner bracket/i)).toBeVisible();
+});
+
+test('keeps the single elimination playoff without a loser bracket', async ({ page }) => {
+  await startWizard(page, 'Knockout Cup');
+
+  await page.getByRole('radio', { name: /Gruppenphase/ }).check();
+  await page.getByLabel(/Anzahl Gruppen/).fill('2');
+  await page.getByLabel(/Qualifiziert je Gruppe/).fill('2');
+  await finish(page, 'Knockout Cup');
+
+  await page.getByRole('tab', { name: 'Playoffs' }).click();
+  const bracket = page.getByRole('group', { name: /Turnierbaum/i });
+  await expect(bracket).toBeVisible();
+  await expect(bracket.getByText(/loser bracket/i)).toHaveCount(0);
+});
+
 test('records a league result and updates the table', async ({ page }) => {
   await startWizard(page, 'Table Cup', 'Alpha, DE\nBeta, US\nGamma, SE\nDelta, KR');
 

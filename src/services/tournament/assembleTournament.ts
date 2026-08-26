@@ -72,6 +72,17 @@ export type FormatChoice =
       advancePerGroup: number;
       playoffBestOf: BestOf;
       playoffFinalBestOf: BestOf;
+      /**
+       * Which bracket the qualifiers play.
+       *
+       * A group stage has already given everyone several games, so a single
+       * loss deciding the whole event is a real choice rather than the only
+       * option. Defaults to single elimination, which is what a stage created
+       * before this was configurable was given.
+       */
+      playoffFormat?: 'single_elimination' | 'double_elimination';
+      /** Double elimination playoff: whether the grand final can go to a reset. */
+      playoffGrandFinal?: 'single' | 'bracket_reset';
     };
 
 export interface TournamentDraft {
@@ -283,15 +294,26 @@ function buildStages(
         tournamentId,
         name: 'Playoffs',
         order: 1,
-        format: singleElimination(
-          {
-            kind: 'single_elimination',
-            thirdPlaceMatch: false,
-            defaultBestOf: choice.playoffBestOf,
-            finalBestOf: choice.playoffFinalBestOf,
-          },
-          qualifiers,
-        ),
+        format:
+          choice.playoffFormat === 'double_elimination'
+            ? doubleElimination(
+                {
+                  kind: 'double_elimination',
+                  grandFinal: choice.playoffGrandFinal ?? 'bracket_reset',
+                  defaultBestOf: choice.playoffBestOf,
+                  finalBestOf: choice.playoffFinalBestOf,
+                },
+                qualifiers,
+              )
+            : singleElimination(
+                {
+                  kind: 'single_elimination',
+                  thirdPlaceMatch: false,
+                  defaultBestOf: choice.playoffBestOf,
+                  finalBestOf: choice.playoffFinalBestOf,
+                },
+                qualifiers,
+              ),
         entrySeeding: [
           {
             id: newSeedingRuleId(),

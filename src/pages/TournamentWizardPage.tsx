@@ -51,6 +51,8 @@ interface DraftState {
   groupCount: number;
   /** Places per group that advance. Zero means the groups are the whole event. */
   advancePerGroup: number;
+  /** Which bracket the qualifiers of a group stage play. */
+  playoffFormat: 'single_elimination' | 'double_elimination';
   /** Double elimination: whether the grand final can go to a second match. */
   grandFinal: 'single' | 'bracket_reset';
   /** Swiss: how many rounds are played. */
@@ -72,6 +74,7 @@ const INITIAL: DraftState = {
   legs: 1,
   groupCount: 4,
   advancePerGroup: 2,
+  playoffFormat: 'single_elimination',
   grandFinal: 'bracket_reset',
   swissRounds: 5,
 };
@@ -561,7 +564,44 @@ function FormatStep({ draft, set, participantCount }: FormatStepProps) {
           </Field>
         )}
 
-        {draft.formatKind === 'double_elimination' && (
+        {draft.formatKind === 'group_stage' && draft.advancePerGroup > 0 && (
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-sm font-medium text-fg">
+              {t('wizard.field.playoffFormat')}
+            </legend>
+            <p className="mb-1 text-xs text-fg-secondary">{t('wizard.playoffFormatHint')}</p>
+            <div className="flex flex-wrap gap-2">
+              {(['single_elimination', 'double_elimination'] as const).map((option) => (
+                <label
+                  key={option}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border px-4 py-2 text-sm transition-colors',
+                    draft.playoffFormat === option
+                      ? 'border-accent bg-accent-subtle text-accent'
+                      : 'border-line text-fg-secondary hover:bg-hover hover:text-fg',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="playoff-format"
+                    value={option}
+                    checked={draft.playoffFormat === option}
+                    onChange={() => {
+                      set('playoffFormat', option);
+                    }}
+                    className="h-4 w-4 accent-[var(--tc-accent)]"
+                  />
+                  {t(`wizard.format.${option}`)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
+        {(draft.formatKind === 'double_elimination' ||
+          (draft.formatKind === 'group_stage' &&
+            draft.advancePerGroup > 0 &&
+            draft.playoffFormat === 'double_elimination')) && (
           <label className="flex items-start gap-3">
             <input
               type="checkbox"
@@ -673,13 +713,15 @@ function summariseFormat(draft: DraftState, stageCount: number, t: TFunction): s
       : t('wizard.previewSingleGrandFinal');
   }
   if (draft.formatKind === 'group_stage') {
-    return draft.advancePerGroup > 0
-      ? t('wizard.previewGroupsWithPlayoffs', {
-          groups: draft.groupCount,
-          advance: draft.advancePerGroup,
-          stages: stageCount,
-        })
-      : t('wizard.previewGroupsOnly', { groups: draft.groupCount });
+    if (draft.advancePerGroup === 0) {
+      return t('wizard.previewGroupsOnly', { groups: draft.groupCount });
+    }
+    return t('wizard.previewGroupsWithPlayoffs', {
+      groups: draft.groupCount,
+      advance: draft.advancePerGroup,
+      stages: stageCount,
+      playoff: t(`wizard.format.${draft.playoffFormat}`),
+    });
   }
   return draft.thirdPlaceMatch ? t('wizard.field.thirdPlace') : t('common.no');
 }
@@ -710,6 +752,8 @@ function toFormatChoice(draft: DraftState): FormatChoice {
         advancePerGroup: draft.advancePerGroup,
         playoffBestOf: draft.defaultBestOf,
         playoffFinalBestOf: draft.finalBestOf,
+        playoffFormat: draft.playoffFormat,
+        playoffGrandFinal: draft.grandFinal,
       };
 
     case 'single_elimination':

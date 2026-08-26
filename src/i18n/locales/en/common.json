@@ -221,7 +221,8 @@
       "legs": "Schedule",
       "bracketReset": "Bracket reset in the grand final",
       "swissRounds": "Rounds",
-      "knownTeams": "Known teams"
+      "knownTeams": "Known teams",
+      "playoffFormat": "Playoff format"
     },
     "formatLegend": "Tournament format",
     "format": {
@@ -244,7 +245,7 @@
     },
     "previewDetail": "Shape",
     "previewGroupsOnly": "{{groups}} groups, no knockout",
-    "previewGroupsWithPlayoffs": "{{groups}} groups, top {{advance}} of each reach the playoffs",
+    "previewGroupsWithPlayoffs": "{{groups}} groups, top {{advance}} of each reach the playoffs ({{playoff}})",
     "bracketResetHint": "The loser bracket winner has to win twice.",
     "swissRoundsHint": "At least {{rounds}} rounds are recommended for this field.",
     "previewSwiss": "{{rounds}} rounds",
@@ -254,7 +255,8 @@
     "noKnownTeams": "No teams on record yet. Enter them as free text below.",
     "registrationTitle": "Created open for entries",
     "registrationHint": "Only {{count}} entrants so far. The tournament is created now and drawn once the field is complete.",
-    "registrationHint_one": "Only {{count}} entrant so far. The tournament is created now and drawn once the field is complete."
+    "registrationHint_one": "Only {{count}} entrant so far. The tournament is created now and drawn once the field is complete.",
+    "playoffFormatHint": "After a group stage every team has already played several games, so whether one defeat decides the event is a real choice."
   },
   "teams": {
     "create": "Add team",
