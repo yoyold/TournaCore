@@ -144,3 +144,60 @@ test('will not reopen the field of a tournament that has results', async ({ page
   await expect(page.getByRole('group', { name: /Turnierbaum/i })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Turnier starten' })).toHaveCount(0);
 });
+
+async function setRegion(page: Page, team: string, region: string): Promise<void> {
+  await page.goto('./#/teams');
+  await page.getByRole('link', { name: new RegExp(team) }).click();
+  await page.getByRole('button', { name: 'Bearbeiten' }).click();
+  await page.getByLabel('Region').fill(region);
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('heading', { name: team, level: 1 })).toBeVisible();
+}
+
+/**
+ * The draw happens on start, once, and is stored.
+ *
+ * It is random on purpose — a seeded distribution decides half the stage before
+ * it is played — but it separates regions where the field allows it, because two
+ * clubs that meet all season make a duller group than two that never do.
+ */
+test('draws the groups on start, keeping regions apart', async ({ page }) => {
+  await seedArchive(page);
+  await setRegion(page, 'Nova Collective', 'EU');
+  await setRegion(page, 'Iron Meridian', 'EU');
+
+  await page.goto('./#/tournaments/new');
+  await page.getByLabel(/Turniername/).fill('Drawn Cup');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.getByRole('radio', { name: /Gruppenphase/ }).check();
+  await page.getByLabel(/Anzahl Gruppen/).fill('2');
+  await page.getByLabel(/Qualifiziert je Gruppe/).fill('0');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await page.getByRole('button', { name: 'Turnier erstellen' }).click();
+  await expect(page.getByRole('heading', { name: 'Drawn Cup', level: 1 })).toBeVisible();
+
+  for (const team of ['Nova Collective', 'Iron Meridian', 'Solstice Nine', 'Pale Horizon']) {
+    await page.getByRole('checkbox', { name: team }).click();
+  }
+  await expect(field(page)).toHaveCount(4);
+
+  await page.getByRole('button', { name: 'Turnier starten' }).click();
+
+  // The draw ran: two groups, evenly filled, with every entrant placed.
+  const tables = page.getByRole('table');
+  await expect(tables).toHaveCount(2);
+  await expect(tables.first().locator('tbody tr')).toHaveCount(2);
+  await expect(tables.last().locator('tbody tr')).toHaveCount(2);
+
+  /*
+   * And the two teams sharing a region are not in the same group. Four teams in
+   * two groups would land that way by chance often enough that this alone would
+   * be a weak guard; what it does catch is the region being ignored entirely,
+   * and the draw itself is pinned down properly by the unit tests.
+   */
+  const groupA = await tables.first().innerText();
+  const together = groupA.includes('Nova Collective') && groupA.includes('Iron Meridian');
+  expect(together).toBe(false);
+});

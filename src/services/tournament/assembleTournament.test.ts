@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { deriveTournamentState } from '@domain/derive';
-import { now, type Game, type Team } from '@models/index';
+import { asId, now, type Game, type Team } from '@models/index';
 
 import { assembleTournament, type TournamentDraft } from './assembleTournament';
 
@@ -352,6 +352,93 @@ describe('a group stage feeding a double elimination playoff', () => {
     );
 
     expect(result.stages[1]!.format.kind).toBe('single_elimination');
+  });
+});
+
+/**
+ * The group draw.
+ *
+ * Random, because a seeded distribution decides half the stage before it is
+ * played, and stored, because a draw is an event rather than a rule: recomputing
+ * it on every read would let a later correction to a team's region rearrange
+ * groups that have already been played.
+ */
+describe('the group stage draw', () => {
+  const REGIONS = ['EU', 'NA', 'APAC', 'EU', 'NA', 'APAC', 'EU', 'NA', 'APAC', 'EU', 'NA', 'APAC'];
+
+  const archive = REGIONS.map((region, index): Team => ({
+    id: asId<Team['id']>(`team-${String(index + 1)}`),
+    name: `Team ${String(index + 1)}`,
+    tag: `T${String(index + 1)}`,
+    region,
+    socials: [],
+    archived: false,
+    createdAt: now(),
+    updatedAt: now(),
+  }));
+
+  const context = { ...emptyContext, existingTeams: archive };
+
+  const groupsOf = (count: number, groupCount = 4) => {
+    const result = assembleTournament(
+      draft({
+        participants: names(count),
+        format: {
+          kind: 'group_stage',
+          groupCount,
+          legs: 1,
+          defaultBestOf: 3,
+          advancePerGroup: 0,
+          playoffBestOf: 3,
+          playoffFinalBestOf: 5,
+        },
+      }),
+      context,
+    );
+
+    const format = result.stages[0]?.format;
+    return format?.kind === 'group_stage' ? format : undefined;
+  };
+
+  /** Slot n holds the nth participant, which is the nth name. */
+  const regionOfSlot = (slot: number): string | undefined => REGIONS[slot - 1];
+
+  it('stores the draw rather than a rule to recompute it', () => {
+    const format = groupsOf(12);
+    expect(format?.distribution).toBe('manual');
+    expect(format?.groups?.flat().sort((a, b) => a - b)).toEqual(
+      Array.from({ length: 12 }, (_, index) => index + 1),
+    );
+  });
+
+  it('keeps two teams of one region out of the same group', () => {
+    const format = groupsOf(12);
+    expect(format?.groups).toBeDefined();
+
+    for (const group of format?.groups ?? []) {
+      const regions = group.map(regionOfSlot);
+      expect(new Set(regions).size).toBe(regions.length);
+    }
+  });
+
+  it('fills the groups evenly', () => {
+    expect(groupsOf(12)?.groups?.map((group) => group.length)).toEqual([3, 3, 3, 3]);
+  });
+
+  /** Two tournaments of the same field must not produce the same groups. */
+  it('draws each tournament separately', () => {
+    const runs = Array.from({ length: 5 }, () => JSON.stringify(groupsOf(12)?.groups));
+    expect(new Set(runs).size).toBeGreaterThan(1);
+  });
+
+  /**
+   * There is nothing to draw yet, and a draw made now would be replaced when
+   * the tournament actually starts — having been published in the meantime.
+   */
+  it('leaves a field too small to play undrawn', () => {
+    const format = groupsOf(1);
+    expect(format?.distribution).toBe('random');
+    expect(format?.groups).toBeUndefined();
   });
 });
 

@@ -7,14 +7,11 @@ import { Card, CardBody } from '@components/ui/Card';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { TeamSelectionList } from '@pages/TeamSelectionList';
 import { parseParticipants, type ParsedParticipant } from '@services/tournament/parseParticipants';
-import { fieldOf } from '@services/tournament/registration';
+import { fieldOf, MINIMUM_FIELD } from '@services/tournament/registration';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
 import type { TeamId, Tournament } from '@models/index';
-
-/** Below this no format can be drawn, so no tournament can be started. */
-const MINIMUM_FIELD = 2;
 
 /**
  * A tournament between being announced and being played.

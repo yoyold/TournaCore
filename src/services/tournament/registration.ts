@@ -20,6 +20,9 @@ import { deriveTag, type ParsedParticipant } from './parseParticipants';
  * growing field is how many entry slots the first stage declares.
  */
 
+/** Below this no format can be drawn, so no tournament can be started. */
+export const MINIMUM_FIELD = 2;
+
 /**
  * Restates the entry slots of the stages that read from the entry list.
  *

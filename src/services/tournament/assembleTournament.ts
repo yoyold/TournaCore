@@ -23,7 +23,9 @@ import {
 } from '@models/index';
 import { uniqueSlug } from '@utils/slug';
 
+import { drawRegionalGroups } from './groupDraw';
 import { deriveTag, type ParsedParticipant } from './parseParticipants';
+import { MINIMUM_FIELD } from './registration';
 
 export type BestOf = 1 | 3 | 5 | 7;
 
@@ -138,6 +140,7 @@ export function assembleTournament(
     if (!existing) {
       newTeams.push(team);
       teamsByName.set(parsed.name.toLowerCase(), team);
+      teamsById.set(team.id, team);
     }
 
     return {
@@ -151,7 +154,23 @@ export function assembleTournament(
   const { gameId, newGame } = resolveGame(draft.gameName, context.existingGames, timestamp);
   const tournamentId = newTournamentId();
 
-  const stages = buildStages(draft.format, participants.length, tournamentId, timestamp);
+  /*
+   * A field too small to draw is not drawn: the tournament opens for entries
+   * instead, and the groups are made when it starts. Drawing now and again
+   * later would publish a draw that quietly changes.
+   */
+  const drawFor =
+    participants.length >= MINIMUM_FIELD
+      ? (groupCount: number, seed: string): number[][] =>
+          drawRegionalGroups({
+            participants,
+            teamOf: (teamId) => teamsById.get(teamId),
+            groupCount,
+            seed,
+          })
+      : undefined;
+
+  const stages = buildStages(draft.format, participants.length, tournamentId, timestamp, drawFor);
 
   const tournament: Tournament = {
     id: tournamentId,
@@ -190,6 +209,8 @@ function buildStages(
   participantCount: number,
   tournamentId: TournamentId,
   timestamp: string,
+  /** Makes the group draw, where there is a field to draw. */
+  drawFor?: (groupCount: number, seed: string) => number[][],
 ): Stage[] {
   const firstStageId = newStageId();
   const slots = Math.max(participantCount, 1);
@@ -269,6 +290,16 @@ function buildStages(
       ];
 
     case 'group_stage': {
+      /*
+       * The draw is random, and stored rather than recomputed. It also keeps
+       * teams from one region apart where the field allows it — two clubs that
+       * meet all season are a duller group than two that never do.
+       *
+       * Until there is a field to draw, the stage says how it would be filled
+       * and nothing more.
+       */
+      const drawn = drawFor?.(choice.groupCount, firstStageId);
+
       const groupStage: Stage = {
         ...base,
         id: firstStageId,
@@ -276,7 +307,9 @@ function buildStages(
         format: {
           kind: 'group_stage',
           groupCount: choice.groupCount,
-          distribution: 'snake',
+          ...(drawn
+            ? { distribution: 'manual' as const, groups: drawn }
+            : { distribution: 'random' as const }),
           perGroup: {
             legs: choice.legs,
             pointSystem: DEFAULT_POINT_SYSTEM,

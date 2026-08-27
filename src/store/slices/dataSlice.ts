@@ -24,6 +24,7 @@ import {
   writeMeta,
 } from '@services/db';
 import { mergeTeams as merge } from '@services/team/mergeTeams';
+import { drawRegionalGroups } from '@services/tournament/groupDraw';
 import { applyField, fieldOf, resizeEntrySlots } from '@services/tournament/registration';
 
 import type { AssembledTournament } from '@services/tournament/assembleTournament';
@@ -74,7 +75,14 @@ export interface DataState {
     update: (current: ParsedParticipant[]) => ParsedParticipant[],
   ) => Promise<void>;
 
-  /** Draws the tournament and opens it for results. */
+  /**
+   * Draws the tournament and opens it for results.
+   *
+   * A group stage is drawn here and the draw is stored, because this is the
+   * moment it becomes a fact. Deriving it on every read instead would let a
+   * later correction to a team's region rearrange groups that have already been
+   * played.
+   */
   startTournament: (id: TournamentId) => Promise<void>;
 
   /** Everything currently held, for export. */
@@ -297,12 +305,42 @@ export const useDataStore = create<DataState>()((set, get) => {
 
     startTournament: async (id) => {
       await guard(async () => {
-        const tournament = get().tournaments[id];
+        const state = get();
+        const tournament = state.tournaments[id];
         if (!tournament) return;
 
-        const next = { ...tournament, status: 'live' as const, updatedAt: now() };
+        const timestamp = now();
+        const next = { ...tournament, status: 'live' as const, updatedAt: timestamp };
+
+        const first = tournament.stageIds
+          .map((stageId) => state.stages[stageId])
+          .find((stage): stage is Stage => stage !== undefined);
+
+        const drawn: Stage | undefined =
+          first?.format.kind === 'group_stage'
+            ? {
+                ...first,
+                format: {
+                  ...first.format,
+                  distribution: 'manual',
+                  groups: drawRegionalGroups({
+                    participants: tournament.participants,
+                    teamOf: (teamId) => state.teams[teamId],
+                    groupCount: first.format.groupCount,
+                    seed: first.id,
+                  }),
+                },
+                updatedAt: timestamp,
+              }
+            : undefined;
+
         await tournamentRepository.put(next);
-        set((state) => ({ tournaments: { ...state.tournaments, [next.id]: next } }));
+        if (drawn) await stageRepository.put(drawn);
+
+        set((latest) => ({
+          tournaments: { ...latest.tournaments, [next.id]: next },
+          stages: drawn ? { ...latest.stages, [drawn.id]: drawn } : latest.stages,
+        }));
       });
     },
 
