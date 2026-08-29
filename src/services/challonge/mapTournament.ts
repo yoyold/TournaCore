@@ -833,6 +833,9 @@ function attachResults(input: {
   const taken = new Set<MatchId>();
   const passes = matchesByStage.reduce((sum, forStage) => sum + forStage.length, 0) + 8;
 
+  // When the tournament was played, for stamping results the source did not date.
+  const playedAt = tournament.startsAt ?? tournament.createdAt;
+
   for (let pass = 0; pass < passes; pass += 1) {
     const state = deriveTournamentState({ tournament, stages: [...stages], matches });
     let progressed = false;
@@ -873,6 +876,14 @@ function attachResults(input: {
             challonge,
             slotAIsPlayer1: byChallongeId.get(challonge.player1_id ?? '') === a,
             options,
+            playedAt,
+            /*
+             * The placement loop only takes matches whose participants are
+             * already decided, so results come out of it in the order they must
+             * have been played. That order is what a source without dates has to
+             * be given, and this is where it is known.
+             */
+            sequence: matches.length,
           }),
         );
         taken.add(resolved.id);
@@ -933,8 +944,21 @@ function buildMatch(input: {
   challonge: ChallongeMatch;
   slotAIsPlayer1: boolean;
   options: MapOptions;
+  /** When the tournament was played, for a source that dates nothing. */
+  playedAt: string;
+  /** Position in the order the results were placed, which is the order played. */
+  sequence: number;
 }): Match {
-  const { tournamentId, stageId, blueprint, challonge, slotAIsPlayer1, options } = input;
+  const {
+    tournamentId,
+    stageId,
+    blueprint,
+    challonge,
+    slotAIsPlayer1,
+    options,
+    playedAt,
+    sequence,
+  } = input;
 
   const games: GameResult[] = parseScores(challonge.scores_csv).map(([left, right], index) => {
     const scoreA = slotAIsPlayer1 ? left : right;
@@ -971,11 +995,35 @@ function buildMatch(input: {
     outcome: {
       winner: winnerSide,
       reason: challonge.forfeited === true ? 'forfeit' : 'played',
-      decidedAt: challonge.completed_at ?? challonge.updated_at ?? options.timestamp,
+      /*
+       * A public Challonge bracket dates nothing at all, and stamping the
+       * moment of import would make an archive spanning years read as one
+       * afternoon — worse, it would make the Elo table depend on the order the
+       * tournaments happened to be entered in. Where the source has no date,
+       * the tournament's own date is used and the results are spread across it
+       * in the order they were played.
+       */
+      decidedAt: challonge.completed_at ?? challonge.updated_at ?? stampWithin(playedAt, sequence),
     },
     createdAt: options.timestamp,
     updatedAt: options.timestamp,
   };
+}
+
+/** Matches a day apart by this much, which fits any plausible schedule. */
+const RESULT_SPACING_MS = 60_000;
+
+/**
+ * A time on the day the tournament was played, ordered by when it was played.
+ *
+ * Synthetic, and deliberately so: the alternative is no order at all, and Elo
+ * reads results in sequence. The spacing carries no claim about the real
+ * schedule — only about what followed what.
+ */
+function stampWithin(playedAt: string, sequence: number): string {
+  const start = Date.parse(playedAt);
+  if (Number.isNaN(start)) return playedAt;
+  return new Date(start + sequence * RESULT_SPACING_MS).toISOString();
 }
 
 /**

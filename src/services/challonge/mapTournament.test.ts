@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { deriveTournamentState } from '@domain/derive';
+import { eloLeaderboard } from '@domain/statistics/elo';
 import { buildExport, parseImport } from '@services/transfer/transfer';
 
 import { parseChallonge } from './challongeSchema';
 import { inferMatchFormat, mapChallongeTournaments, parseScores } from './mapTournament';
 
 import type { MapOptions } from './mapTournament';
+import type { Game, Team } from '@models/index';
+import type { TransferData } from '@services/transfer/transfer';
 
 /** Counter-based ids, so a conversion is reproducible and readable in failures. */
 function options(overrides: Partial<MapOptions> = {}): MapOptions {
@@ -755,6 +758,94 @@ describe('a knockout qualifying round', () => {
   });
 });
 
+/**
+ * Elo depends on the order results arrive in, so an archive entered years after
+ * the fact must be rated by when it was played rather than by when it was
+ * typed. Two tournaments imported in either order have to produce the same
+ * table, and the only thing that can make them is the dates on the results.
+ */
+describe('rating an archive entered out of order', () => {
+  const EARLY = tournament({
+    name: 'Spring 2019',
+    players: ['Nova Collective', 'Iron Meridian', 'Solstice Nine', 'Pale Horizon'],
+    matches: [
+      { id: '1', player1: '1', player2: '4', winner: '1', scores: '2-0', order: 1 },
+      { id: '2', player1: '2', player2: '3', winner: '2', scores: '2-1', order: 2 },
+      { id: '3', player1: '1', player2: '2', winner: '2', scores: '1-2', order: 3 },
+    ],
+  });
+
+  const LATE = tournament({
+    name: 'Autumn 2023',
+    players: ['Iron Meridian', 'Nova Collective', 'Pale Horizon', 'Solstice Nine'],
+    matches: [
+      { id: '1', player1: '1', player2: '4', winner: '4', scores: '0-2', order: 1 },
+      { id: '2', player1: '2', player2: '3', winner: '2', scores: '2-0', order: 2 },
+      { id: '3', player1: '4', player2: '2', winner: '4', scores: '2-1', order: 3 },
+    ],
+  });
+
+  const importedAs = (order: readonly unknown[], dates: readonly string[]) => {
+    const teams: Team[] = [];
+    const games: Game[] = [];
+    const slugs: string[] = [];
+    const data = { tournaments: [], stages: [], matches: [] } as {
+      tournaments: TransferData['tournaments'];
+      stages: TransferData['stages'];
+      matches: TransferData['matches'];
+    };
+
+    order.forEach((raw, index) => {
+      const result = mapChallongeTournaments(parseChallonge(raw), {
+        ...options(),
+        existingTeams: teams,
+        existingGames: games,
+        existingSlugs: slugs,
+        // Each import happens later than the last, as it would in real use.
+        timestamp: `2026-0${String(index + 1)}-01T00:00:00.000Z`,
+        playedAt: dates[index] ?? '2026-01-01T00:00:00.000Z',
+      });
+
+      teams.push(...result.data.teams);
+      games.push(...result.data.games);
+      slugs.push(...result.data.tournaments.map((entry) => entry.slug));
+      data.tournaments.push(...result.data.tournaments);
+      data.stages.push(...result.data.stages);
+      data.matches.push(...result.data.matches);
+    });
+
+    const board = eloLeaderboard(data);
+    const nameOf = new Map(teams.map((team) => [team.id, team.name]));
+    return board.map(
+      (entry) => `${nameOf.get(entry.teamId) ?? '?'} ${String(Math.round(entry.rating))}`,
+    );
+  };
+
+  it('rates the same however the tournaments were entered', () => {
+    const chronological = importedAs(
+      [EARLY, LATE],
+      ['2019-04-01T00:00:00.000Z', '2023-10-01T00:00:00.000Z'],
+    );
+    const backwards = importedAs(
+      [LATE, EARLY],
+      ['2023-10-01T00:00:00.000Z', '2019-04-01T00:00:00.000Z'],
+    );
+
+    expect(backwards).toEqual(chronological);
+  });
+
+  /** And the ratings actually moved, so the comparison above means something. */
+  it('produces a table that a single result would change', () => {
+    const board = importedAs(
+      [EARLY, LATE],
+      ['2019-04-01T00:00:00.000Z', '2023-10-01T00:00:00.000Z'],
+    );
+
+    expect(board.length).toBeGreaterThan(1);
+    expect(new Set(board.map((row) => row.split(' ').at(-1))).size).toBeGreaterThan(1);
+  });
+});
+
 describe('when the tournament took place', () => {
   /**
    * A public Challonge bracket carries no date whatsoever. Without one every
@@ -782,5 +873,67 @@ describe('when the tournament took place', () => {
   it('falls back to the moment of import when nothing says otherwise', () => {
     const { data } = convert(SINGLE_ELIMINATION);
     expect(data.tournaments[0]?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+  });
+
+  /**
+   * The results need dating too, not just the tournament.
+   *
+   * Elo folds results in sequence, so stamping them all with the moment of the
+   * import made the ratings depend on the order an archive happened to be
+   * pasted in — and, within a tournament, on how the identifiers sorted, which
+   * put the grand final first.
+   */
+  describe('and when its results were played', () => {
+    it('dates the results from the tournament rather than the import', () => {
+      const { data } = convert(SINGLE_ELIMINATION, {
+        ...options(),
+        playedAt: '2019-04-01T00:00:00.000Z',
+      });
+
+      for (const match of data.matches) {
+        expect(match.outcome?.decidedAt.slice(0, 10)).toBe('2019-04-01');
+      }
+    });
+
+    it('gives every result its own moment', () => {
+      const { data } = convert(SINGLE_ELIMINATION, {
+        ...options(),
+        playedAt: '2019-04-01T00:00:00.000Z',
+      });
+
+      const stamps = new Set(data.matches.map((match) => match.outcome?.decidedAt));
+      expect(stamps.size).toBe(data.matches.length);
+    });
+
+    it('dates a later round after the round that feeds it', () => {
+      const { data } = convert(SINGLE_ELIMINATION, {
+        ...options(),
+        playedAt: '2019-04-01T00:00:00.000Z',
+      });
+
+      const byRound = new Map<number, string[]>();
+      for (const match of data.matches) {
+        const round = match.position.round;
+        byRound.set(round, [...(byRound.get(round) ?? []), match.outcome?.decidedAt ?? '']);
+      }
+
+      const rounds = [...byRound.entries()].sort((a, b) => a[0] - b[0]);
+      for (let index = 1; index < rounds.length; index += 1) {
+        const earlier = Math.max(...(rounds[index - 1]?.[1] ?? []).map((d) => Date.parse(d)));
+        const later = Math.min(...(rounds[index]?.[1] ?? []).map((d) => Date.parse(d)));
+        expect(later).toBeGreaterThan(earlier);
+      }
+    });
+
+    /** A source that does record dates knows better than anything synthetic. */
+    it('keeps a date the source recorded', () => {
+      const dated = structuredClone(SINGLE_ELIMINATION);
+      const first = dated.tournament.matches[0];
+      if (first) Object.assign(first.match, { completed_at: '2020-07-07T12:00:00.000Z' });
+
+      const { data } = convert(dated, { ...options(), playedAt: '2019-04-01T00:00:00.000Z' });
+      const stamps = data.matches.map((match) => match.outcome?.decidedAt);
+      expect(stamps).toContain('2020-07-07T12:00:00.000Z');
+    });
   });
 });

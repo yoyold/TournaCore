@@ -91,7 +91,16 @@
     "language": "Sprache",
     "data": "Daten",
     "autosave": "Automatisch speichern",
-    "autosaveHint": "Änderungen werden ohne Zutun im Browser gespeichert."
+    "autosaveHint": "Änderungen werden ohne Zutun im Browser gespeichert.",
+    "matchDates": "Spieldaten reparieren",
+    "matchDatesHint": "Diese Turniere wurden alle im selben Moment eingetragen — importierte Challonge-Turniere bringen keine Spieldaten mit. Für die Elo-Wertung zählt die Reihenfolge, deshalb werden die Ergebnisse auf das Turnierdatum und in ihre echte Spielreihenfolge gesetzt.",
+    "matchDatesEntry": "{{count}} Ergebnisse → {{date}}",
+    "matchDatesEntry_one": "{{count}} Ergebnis → {{date}}",
+    "matchDatesApply": "{{count}} Ergebnisse umdatieren",
+    "matchDatesApply_one": "{{count}} Ergebnis umdatieren",
+    "matchDatesSafety": "Geändert wird ausschließlich der Zeitpunkt. Ergebnisse, Teilnehmer und Paarungen bleiben unangetastet.",
+    "matchDatesDone": "{{count}} Ergebnisse umdatiert.",
+    "matchDatesDone_one": "{{count}} Ergebnis umdatiert."
   },
   "privacy": {
     "localOnly": "Alle Daten bleiben auf deinem Gerät",

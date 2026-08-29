@@ -25,6 +25,7 @@ import {
 } from '@services/db';
 import { mergeTeams as merge } from '@services/team/mergeTeams';
 import { drawRegionalGroups } from '@services/tournament/groupDraw';
+import { repairMatchDates, type RepairedTournament } from '@services/tournament/matchDates';
 import { applyField, fieldOf, resizeEntrySlots } from '@services/tournament/registration';
 
 import type { AssembledTournament } from '@services/tournament/assembleTournament';
@@ -89,6 +90,21 @@ export interface DataState {
   snapshot: () => TransferData;
   /** Replaces or merges stored data with an imported set. */
   applyImport: (data: TransferData, mode: ImportMode) => Promise<void>;
+
+  /**
+   * Tournaments whose results were all stamped at one moment, with the dates
+   * they would be given. Pure: nothing is written until `applyMatchDates` runs.
+   */
+  pendingMatchDates: () => RepairedTournament[];
+
+  /**
+   * Moves bulk-stamped results onto the date their tournament was played.
+   *
+   * Only `outcome.decidedAt` changes. Elo folds results in sequence, so an
+   * archive imported in one sitting was rated in the order it was pasted rather
+   * than the order it was played.
+   */
+  applyMatchDates: () => Promise<number>;
 
   removeTournament: (id: TournamentId) => Promise<void>;
   /** Archives rather than deletes, to keep match history intact. */
@@ -342,6 +358,32 @@ export const useDataStore = create<DataState>()((set, get) => {
           stages: drawn ? { ...latest.stages, [drawn.id]: drawn } : latest.stages,
         }));
       });
+    },
+
+    pendingMatchDates: () => {
+      const state = get();
+      return repairMatchDates({
+        tournaments: Object.values(state.tournaments),
+        stages: Object.values(state.stages),
+        matches: Object.values(state.matches),
+      });
+    },
+
+    applyMatchDates: async () => {
+      const changed = get()
+        .pendingMatchDates()
+        .flatMap((entry) => entry.matches);
+
+      if (changed.length === 0) return 0;
+
+      await guard(async () => {
+        const timestamp = now();
+        const next = changed.map((match) => ({ ...match, updatedAt: timestamp }));
+        await matchRepository.putMany(next);
+        set((state) => ({ matches: { ...state.matches, ...index(next) } }));
+      });
+
+      return changed.length;
     },
 
     snapshot: () => {

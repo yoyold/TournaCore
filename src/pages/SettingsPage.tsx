@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardBody, CardHeader, CardTitle } from '@components/ui/Card';
 import { PageHeader } from '@components/ui/PageHeader';
 import { useTheme } from '@hooks/useTheme';
+import { MatchDateRepairCard } from '@pages/MatchDateRepairCard';
 import {
   useSettingsStore,
   type LanguagePreference,
@@ -124,6 +125,8 @@ export function SettingsPage() {
             </label>
           </CardBody>
         </Card>
+
+        <MatchDateRepairCard />
       </div>
     </>
   );

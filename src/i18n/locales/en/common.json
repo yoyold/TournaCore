@@ -91,7 +91,16 @@
     "language": "Language",
     "data": "Data",
     "autosave": "Autosave",
-    "autosaveHint": "Changes are stored in your browser automatically."
+    "autosaveHint": "Changes are stored in your browser automatically.",
+    "matchDates": "Repair result dates",
+    "matchDatesHint": "These tournaments were all stamped at one moment — an imported Challonge bracket carries no dates of its own. Elo reads results in sequence, so they are moved onto the date the tournament was played, in the order they were played.",
+    "matchDatesEntry": "{{count}} results → {{date}}",
+    "matchDatesEntry_one": "{{count}} result → {{date}}",
+    "matchDatesApply": "Re-date {{count}} results",
+    "matchDatesApply_one": "Re-date {{count}} result",
+    "matchDatesSafety": "Only the time changes. Results, participants and fixtures are left exactly as they are.",
+    "matchDatesDone": "Re-dated {{count}} results.",
+    "matchDatesDone_one": "Re-dated {{count}} result."
   },
   "privacy": {
     "localOnly": "All data stays on your device",
