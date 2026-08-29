@@ -33,6 +33,10 @@
   --color-danger: var(--tc-danger);
   --color-danger-hover: var(--tc-danger-hover);
 
+  --color-medal-gold: var(--tc-medal-gold);
+  --color-medal-silver: var(--tc-medal-silver);
+  --color-medal-bronze: var(--tc-medal-bronze);
+
   --color-winner-line: var(--tc-winner-line);
   --color-connector: var(--tc-connector);
 

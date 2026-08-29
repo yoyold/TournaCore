@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { EloChart } from '@components/statistics/EloChart';
+import { PlacementTrophies } from '@components/statistics/PlacementTrophies';
 import { Button } from '@components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@components/ui/Card';
 import { FlagIcon } from '@components/ui/FlagIcon';
@@ -80,6 +81,12 @@ export function TeamDetailPage() {
           <p className="w-full text-sm text-fg-secondary">{team.description}</p>
         )}
       </div>
+
+      {stats.placements.length > 0 && (
+        <div className="mb-6">
+          <PlacementTrophies placements={stats.placements} />
+        </div>
+      )}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat

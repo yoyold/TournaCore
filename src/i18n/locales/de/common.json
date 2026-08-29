@@ -328,7 +328,9 @@
     "eloColumn": {
       "date": "Datum",
       "result": "Ergebnis"
-    }
+    },
+    "trophies": "Platzierungen",
+    "trophyLabel": "{{rank}}. Platz — {{tournament}}"
   },
   "statistics": {
     "tab": {

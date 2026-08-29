@@ -37,6 +37,7 @@ const EMPTY: Omit<TeamStatistics, 'teamId'> = {
   mapsLost: 0,
   tournamentsEntered: 0,
   tournamentsWon: 0,
+  placements: [],
   opponents: [],
   history: [],
 };

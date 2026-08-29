@@ -331,3 +331,123 @@ describe('computeTeamStatistics', () => {
     expect(stats).toMatchObject({ matchesPlayed: 0, wins: 0, winRate: 0, history: [] });
   });
 });
+
+/**
+ * The trophy cabinet. Placements come out of the final standings, which a
+ * bracket already ranks by how far each participant got.
+ */
+describe('placements', () => {
+  /** Four teams seed as [1, 4, 3, 2], so the final is team 1 against team 2. */
+  const played = [match(0, 0, 'A'), match(0, 1, 'A'), match(1, 0, 'A')];
+
+  const cabinet = (
+    matches: Match[],
+    overrides: Partial<Tournament> = {},
+    stageOverrides: Partial<Stage> = {},
+  ) =>
+    computeAllTeamStatistics({
+      tournaments: [tournament(4, overrides)],
+      stages: [stage(4, stageOverrides)],
+      matches,
+    });
+
+  it('records the winner as first', () => {
+    const stats = cabinet(played);
+    expect(stats.get(team(1))?.placements).toMatchObject([{ rank: 1, tournamentName: 'Test Cup' }]);
+  });
+
+  it('records the beaten finalist as second', () => {
+    expect(cabinet(played).get(team(3))?.placements).toMatchObject([{ rank: 2 }]);
+  });
+
+  /**
+   * Losing a semi-final says nothing about which of the two losers was better,
+   * so both come third. A cabinet that awarded one of them fourth would be
+   * inventing a result nobody played for.
+   */
+  it('gives both losing semi-finalists a third place', () => {
+    const stats = cabinet(played);
+    expect(stats.get(team(4))?.placements).toMatchObject([{ rank: 3 }]);
+    expect(stats.get(team(2))?.placements).toMatchObject([{ rank: 3 }]);
+  });
+
+  it('leaves out everyone below third', () => {
+    const stats = computeAllTeamStatistics({
+      tournaments: [tournament(8)],
+      stages: [stage(8)],
+      matches: [
+        match(0, 0, 'A'),
+        match(0, 1, 'A'),
+        match(0, 2, 'A'),
+        match(0, 3, 'A'),
+        match(1, 0, 'A'),
+        match(1, 1, 'A'),
+        match(2, 0, 'A'),
+      ],
+    });
+
+    // Eight teams: one first, one second, two thirds, four with nothing.
+    const withTrophies = [...stats.values()].filter((entry) => entry.placements.length > 0);
+    expect(withTrophies).toHaveLength(4);
+  });
+
+  it('hands out nothing while the tournament is unfinished', () => {
+    expect(cabinet([match(0, 0, 'A')]).get(team(1))?.placements).toEqual([]);
+  });
+
+  it('marks a world championship, whatever the case', () => {
+    for (const name of ['World Championship 2018', 'APEX world championship']) {
+      expect(cabinet(played, { name }).get(team(1))?.placements[0]?.major).toBe(true);
+    }
+  });
+
+  it('leaves an ordinary tournament unmarked', () => {
+    expect(cabinet(played, { name: 'Spring Cup' }).get(team(1))?.placements[0]?.major).toBe(false);
+  });
+
+  it('dates a placement from the tournament rather than from now', () => {
+    const stats = cabinet(played, { startsAt: '2018-11-03T00:00:00.000Z' });
+    expect(stats.get(team(1))?.placements[0]?.at).toBe('2018-11-03T00:00:00.000Z');
+  });
+
+  /** A cabinet reads by weight: best first, and among equals the most recent. */
+  it('sorts the best first and the most recent among equals', () => {
+    const second = asId<TournamentId>('t2');
+    const secondStage = asId<StageId>('s2');
+
+    const other: Tournament = {
+      ...tournament(2, { startsAt: '2019-01-01T00:00:00.000Z' }),
+      id: second,
+      name: 'Second Cup',
+      slug: 'second-cup',
+      stageIds: [secondStage],
+      participants: [
+        { id: asId<Participant['id']>('q1'), teamId: team(9), seed: 1, status: 'active' },
+        { id: asId<Participant['id']>('q2'), teamId: team(1), seed: 2, status: 'active' },
+      ],
+    };
+
+    const otherStage: Stage = { ...stage(2), id: secondStage, tournamentId: second };
+    const otherPosition = { bracket: 'winner' as const, round: 0, indexInRound: 0 };
+    const otherMatch: Match = {
+      ...match(0, 0, 'A'),
+      id: makeMatchId(secondStage, otherPosition),
+      tournamentId: second,
+      stageId: secondStage,
+    };
+
+    const stats = computeAllTeamStatistics({
+      tournaments: [tournament(4, { startsAt: '2018-01-01T00:00:00.000Z' }), other],
+      stages: [stage(4), otherStage],
+      matches: [...played, otherMatch],
+    });
+
+    // First at the older event outranks second at the newer one.
+    expect(stats.get(team(1))?.placements.map((entry) => entry.rank)).toEqual([1, 2]);
+  });
+
+  it('still counts a win as a win', () => {
+    expect(cabinet(played).get(team(1))?.tournamentsWon).toBe(1);
+    expect(cabinet(played).get(team(3))?.tournamentsWon).toBe(0);
+  });
+});

@@ -24,6 +24,30 @@ export interface MatchHistoryEntry {
   playedAt: IsoDateTime;
 }
 
+/** A finish worth showing off: the top three of a completed tournament. */
+export interface Placement {
+  tournamentId: TournamentId;
+  tournamentName: string;
+  /** 1, 2 or 3. Ranks can be shared, so two teams may both come third. */
+  rank: number;
+  /** Whether the event was a world championship. */
+  major: boolean;
+  /** When the tournament was played, for ordering a cabinet. */
+  at: IsoDateTime;
+}
+
+/**
+ * Whether a tournament's name marks it as a world championship.
+ *
+ * Read off the name because that is the only thing recorded: a tournament has
+ * no tier. It follows that renaming an event changes what its trophies look
+ * like, which is a fair trade for not asking every organiser to classify their
+ * own tournaments — but it is a naming convention, not a fact about the event.
+ */
+export function isWorldChampionship(name: string): boolean {
+  return /world\s+championship/i.test(name);
+}
+
 export interface OpponentRecord {
   teamId: TeamId;
   wins: number;
@@ -41,6 +65,8 @@ export interface TeamStatistics {
   mapsLost: number;
   tournamentsEntered: number;
   tournamentsWon: number;
+  /** Top-three finishes, best and most recent first. */
+  placements: Placement[];
   /** Sorted by most-played opponent first. */
   opponents: OpponentRecord[];
   /** Most recent match first. */
@@ -85,6 +111,7 @@ export function computeAllTeamStatistics(input: StatisticsInput): Map<TeamId, Te
         mapsLost: 0,
         tournamentsEntered: 0,
         tournamentsWon: 0,
+        placements: [],
         opponents: [],
         history: [],
       };
@@ -167,18 +194,40 @@ export function computeAllTeamStatistics(input: StatisticsInput): Map<TeamId, Te
       }
     }
 
-    // A tournament win is the top placement of a completed tournament.
+    /*
+     * Placements come from the final standings, which a bracket already ranks by
+     * how far each participant got. Ranks can be shared — without a third place
+     * match both losing semi-finalists come third — so a tournament can hand out
+     * two bronzes, and pretending otherwise would invent a result nobody played
+     * for.
+     */
     if (state.isComplete) {
-      const champion = state.finalStandings.find((standing) => standing.rank === 1);
-      const championTeam =
-        champion === undefined ? undefined : teamOfParticipant.get(champion.participantId);
-      if (championTeam !== undefined) ensure(championTeam).tournamentsWon += 1;
+      const major = isWorldChampionship(tournament.name);
+      const at = tournament.endsAt ?? tournament.startsAt ?? tournament.createdAt;
+
+      for (const standing of state.finalStandings) {
+        if (standing.rank > 3) continue;
+        const teamId = teamOfParticipant.get(standing.participantId);
+        if (teamId === undefined) continue;
+
+        const entry = ensure(teamId);
+        if (standing.rank === 1) entry.tournamentsWon += 1;
+        entry.placements.push({
+          tournamentId: tournament.id,
+          tournamentName: tournament.name,
+          rank: standing.rank,
+          major,
+          at,
+        });
+      }
     }
   }
 
   for (const entry of stats.values()) {
     entry.winRate = entry.matchesPlayed === 0 ? 0 : entry.wins / entry.matchesPlayed;
     entry.history.sort((a, b) => b.playedAt.localeCompare(a.playedAt));
+    // Best first, and among equals the most recent — a cabinet reads by weight.
+    entry.placements.sort((a, b) => a.rank - b.rank || b.at.localeCompare(a.at));
     entry.opponents = [...(headToHead.get(entry.teamId)?.values() ?? [])].sort(
       (a, b) => b.wins + b.losses - (a.wins + a.losses),
     );
@@ -200,6 +249,7 @@ export function computeTeamStatistics(teamId: TeamId, input: StatisticsInput): T
       mapsLost: 0,
       tournamentsEntered: 0,
       tournamentsWon: 0,
+      placements: [],
       opponents: [],
       history: [],
     }

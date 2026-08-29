@@ -42,6 +42,15 @@
   --tc-winner-line: #22c98a;
   --tc-connector: #2c313d;
 
+  /*
+   * Medals. Gold, silver and bronze mean the same thing in either theme, but
+   * they cannot keep the same lightness in both and stay legible — so they are
+   * tokens like every other colour rather than constants in a component.
+   */
+  --tc-medal-gold: #e8b93f;
+  --tc-medal-silver: #aeb8c4;
+  --tc-medal-bronze: #d08a52;
+
   --tc-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --tc-shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
   --tc-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.5);
@@ -65,6 +74,10 @@
   --tc-accent: #3563e9;
   --tc-accent-hover: #2a52c9;
   --tc-accent-subtle: #3563e914;
+
+  --tc-medal-gold: #8a6206;
+  --tc-medal-silver: #5d6773;
+  --tc-medal-bronze: #8f4f22;
 
   --tc-live: #e5384a;
   --tc-success: #12a06c;
