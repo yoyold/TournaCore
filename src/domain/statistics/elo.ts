@@ -35,6 +35,19 @@ export interface EloRating {
   provisional: boolean;
 }
 
+/** One step of a team's rating, as it stood after a single match. */
+export interface EloPoint {
+  matchId: MatchId;
+  /** When the match was decided. */
+  at: string;
+  /** The team's rating after this match. */
+  rating: number;
+  /** What this match added or took away. */
+  change: number;
+  opponentId: TeamId;
+  won: boolean;
+}
+
 export interface EloInput {
   tournaments: readonly Tournament[];
   stages: readonly Stage[];
@@ -65,7 +78,32 @@ interface RatedMatch {
  * Byes never appear here at all, since they produce no match.
  */
 export function computeEloRatings(input: EloInput): Map<TeamId, EloRating> {
+  return walk(input).ratings;
+}
+
+/**
+ * How one team's rating moved, match by match.
+ *
+ * Derived by replaying the whole circuit rather than by storing a trajectory: a
+ * rating is a function of every result that came before it, so a corrected score
+ * from three years ago changes the shape of the line from that point on. A
+ * stored history would have to be invalidated on every edit, and would be wrong
+ * in the meantime.
+ *
+ * The line starts wherever the team's first match left it. Where it started
+ * before that is `ELO_START` for everyone, which is the reader's reference
+ * rather than a data point.
+ */
+export function eloHistory(input: EloInput, teamId: TeamId): EloPoint[] {
+  return walk(input, teamId).history;
+}
+
+function walk(
+  input: EloInput,
+  track?: TeamId,
+): { ratings: Map<TeamId, EloRating>; history: EloPoint[] } {
   const ratings = new Map<TeamId, EloRating>();
+  const history: EloPoint[] = [];
   const rated = collectRatedMatches(input);
 
   const ensure = (teamId: TeamId): EloRating => {
@@ -115,13 +153,25 @@ export function computeEloRatings(input: EloInput): Map<TeamId, EloRating> {
 
     winner.peak = Math.max(winner.peak, winner.rating);
     loser.peak = Math.max(loser.peak, loser.rating);
+
+    if (track !== undefined && (match.winner === track || match.loser === track)) {
+      const won = match.winner === track;
+      history.push({
+        matchId: match.id,
+        at: match.playedAt,
+        rating: won ? winner.rating : loser.rating,
+        change: won ? change : -change,
+        opponentId: won ? match.loser : match.winner,
+        won,
+      });
+    }
   }
 
   for (const entry of ratings.values()) {
     entry.provisional = entry.matches < PROVISIONAL_BELOW;
   }
 
-  return ratings;
+  return { ratings, history };
 }
 
 /**

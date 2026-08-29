@@ -2,10 +2,13 @@ import { Archive, Pencil, Trophy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { EloChart } from '@components/statistics/EloChart';
 import { Button } from '@components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@components/ui/Card';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { PageHeader } from '@components/ui/PageHeader';
+import { PROVISIONAL_BELOW } from '@domain/statistics/elo';
+import { useEloHistory, useEloRating } from '@hooks/useEloRatings';
 import { useTeamStatistics } from '@hooks/useTeamStatistics';
 import { asId, type TeamId } from '@models/index';
 import { useDataStore } from '@store/slices/dataSlice';
@@ -21,6 +24,8 @@ export function TeamDetailPage() {
   const teams = useDataStore((s) => s.teams);
   const hydrated = useDataStore((s) => s.hydrated);
   const stats = useTeamStatistics(teamId);
+  const elo = useEloRating(teamId);
+  const eloPoints = useEloHistory(teamId);
 
   if (!hydrated) return <p className="text-sm text-fg-muted">{t('common.loading')}</p>;
 
@@ -92,6 +97,48 @@ export function TeamDetailPage() {
           hint={t('teams.tournamentsHint')}
         />
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>{t('teams.eloChart')}</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4">
+          {elo === undefined ? (
+            <p className="text-sm text-fg-muted">{t('teams.eloNone')}</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+                <span className="flex items-baseline gap-2">
+                  <span className="tabular text-3xl font-semibold text-fg">
+                    {Math.round(elo.rating)}
+                  </span>
+                  <Change value={elo.lastChange} />
+                  {elo.provisional && (
+                    <span
+                      className="rounded-full bg-hover px-1.5 py-0.5 text-2xs text-fg-muted"
+                      title={t('statistics.provisionalHint', { count: PROVISIONAL_BELOW })}
+                    >
+                      {t('statistics.provisional')}
+                    </span>
+                  )}
+                </span>
+                <span className="text-xs text-fg-secondary">
+                  {t('statistics.column.peak')}:{' '}
+                  <span className="tabular text-fg">{Math.round(elo.peak)}</span>
+                </span>
+                <span className="text-xs text-fg-secondary">
+                  {t('statistics.column.record')}:{' '}
+                  <span className="tabular text-fg">
+                    {String(elo.wins)}–{String(elo.losses)}
+                  </span>
+                </span>
+              </div>
+
+              <EloChart points={eloPoints} />
+            </>
+          )}
+        </CardBody>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         <Card>
@@ -201,6 +248,20 @@ export function TeamDetailPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+/** The last rating change, never carried by colour alone. */
+function Change({ value }: { value: number }) {
+  const rounded = Math.round(value);
+  if (rounded === 0) return null;
+
+  const up = rounded > 0;
+  return (
+    <span className={cn('tabular text-sm font-medium', up ? 'text-success' : 'text-danger')}>
+      {up ? '+' : ''}
+      {rounded}
+    </span>
   );
 }
 

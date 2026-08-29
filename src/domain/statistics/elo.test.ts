@@ -16,7 +16,14 @@ import {
 
 import { makeMatchId } from '../matchId';
 
-import { ELO_K, ELO_START, computeEloRatings, eloLeaderboard, expectedScore } from './elo';
+import {
+  ELO_K,
+  ELO_START,
+  computeEloRatings,
+  eloHistory,
+  eloLeaderboard,
+  expectedScore,
+} from './elo';
 
 const STAGE = asId<StageId>('s1');
 const TOURNAMENT = asId<TournamentId>('t1');
@@ -298,5 +305,108 @@ describe('eloLeaderboard', () => {
 
   it('is empty when nothing has been played', () => {
     expect(eloLeaderboard(setup([]))).toEqual([]);
+  });
+});
+
+/**
+ * A rating on its own says where a team ended up; the history says how it got
+ * there, which is the part a profile page is for.
+ */
+describe('eloHistory', () => {
+  it('records a point for every match the team played', () => {
+    const history = eloHistory(
+      setup([
+        match(0, 0, 'A', { at: '2026-01-01T10:00:00.000Z' }),
+        match(0, 1, 'A', { at: '2026-01-01T11:00:00.000Z' }),
+        match(1, 0, 'A', { at: '2026-01-01T12:00:00.000Z' }),
+      ]),
+      team(1),
+    );
+
+    // Team 1 plays match 0 of round 0 and then the final; the other first-round
+    // match is between two other teams.
+    expect(history).toHaveLength(2);
+  });
+
+  it('reports the rating as it stood after each match', () => {
+    const history = eloHistory(
+      setup([match(0, 0, 'A', { at: '2026-01-01T10:00:00.000Z' })]),
+      team(1),
+    );
+
+    const winner = computeEloRatings(setup([match(0, 0, 'A')])).get(team(1));
+    expect(history[0]?.rating).toBe(winner?.rating);
+    expect(history[0]?.rating).toBeGreaterThan(ELO_START);
+  });
+
+  it('carries what happened, so a point can be explained', () => {
+    const [point] = eloHistory(
+      setup([match(0, 0, 'A', { at: '2026-01-01T10:00:00.000Z' })]),
+      team(1),
+    );
+
+    expect(point?.won).toBe(true);
+    expect(point?.opponentId).toBe(team(4));
+    expect(point?.at).toBe('2026-01-01T10:00:00.000Z');
+    expect(point?.change).toBeCloseTo(ELO_K / 2);
+  });
+
+  it('signs the change against the team it belongs to', () => {
+    const [point] = eloHistory(
+      setup([match(0, 0, 'A', { at: '2026-01-01T10:00:00.000Z' })]),
+      team(4),
+    );
+
+    expect(point?.won).toBe(false);
+    expect(point?.change).toBeCloseTo(-ELO_K / 2);
+    expect(point?.rating).toBeLessThan(ELO_START);
+  });
+
+  /** The line has to read left to right, whatever order the store held. */
+  it('returns the points oldest first', () => {
+    const history = eloHistory(
+      setup([
+        // Stored final first, and the semi-final it depends on last: a final
+        // whose other half is undecided has no participants to rate.
+        match(1, 0, 'A', { at: '2026-03-01T00:00:00.000Z' }),
+        match(0, 1, 'A', { at: '2026-02-01T00:00:00.000Z' }),
+        match(0, 0, 'A', { at: '2026-01-01T00:00:00.000Z' }),
+      ]),
+      team(1),
+    );
+
+    expect(history.map((point) => point.at)).toEqual([
+      '2026-01-01T00:00:00.000Z',
+      '2026-03-01T00:00:00.000Z',
+    ]);
+  });
+
+  /** Walkovers and byes move no rating, so they are not part of the line. */
+  it('leaves out results that were never played', () => {
+    const history = eloHistory(
+      setup([match(0, 0, 'A', { reason: 'walkover', at: '2026-01-01T00:00:00.000Z' })]),
+      team(1),
+    );
+
+    expect(history).toEqual([]);
+  });
+
+  it('has nothing to say about a team that has not played', () => {
+    expect(eloHistory(setup([]), team(1))).toEqual([]);
+    expect(eloHistory(setup([match(0, 1, 'A')]), team(1))).toEqual([]);
+  });
+
+  /** The history is one team's slice of the same walk, so it cannot disagree. */
+  it('ends where the leaderboard says the team stands', () => {
+    const input = setup([
+      match(0, 0, 'A', { at: '2026-01-01T10:00:00.000Z' }),
+      match(0, 1, 'A', { at: '2026-01-01T11:00:00.000Z' }),
+      match(1, 0, 'B', { at: '2026-01-01T12:00:00.000Z' }),
+    ]);
+
+    const history = eloHistory(input, team(1));
+    const rating = computeEloRatings(input).get(team(1));
+
+    expect(history.at(-1)?.rating).toBe(rating?.rating);
   });
 });

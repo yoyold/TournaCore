@@ -320,7 +320,15 @@
     },
     "region": "Region",
     "regionAll": "All regions",
-    "regionNone": "No region"
+    "regionNone": "No region",
+    "eloChart": "Elo over time",
+    "eloChartLabel": "Elo over {{count}} rated matches, currently {{rating}}.",
+    "eloChartLabel_one": "Elo over {{count}} rated match, currently {{rating}}.",
+    "eloNone": "No rated match yet — byes and walkovers do not count.",
+    "eloColumn": {
+      "date": "Date",
+      "result": "Result"
+    }
   },
   "statistics": {
     "tab": {

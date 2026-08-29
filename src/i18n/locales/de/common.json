@@ -320,7 +320,15 @@
     },
     "region": "Region",
     "regionAll": "Alle Regionen",
-    "regionNone": "Ohne Region"
+    "regionNone": "Ohne Region",
+    "eloChart": "Elo-Verlauf",
+    "eloChartLabel": "Elo-Verlauf über {{count}} gewertete Partien, aktuell {{rating}}.",
+    "eloChartLabel_one": "Elo-Verlauf über {{count}} gewertete Partie, aktuell {{rating}}.",
+    "eloNone": "Noch keine gewertete Partie — Freilose und kampflose Siege zählen nicht.",
+    "eloColumn": {
+      "date": "Datum",
+      "result": "Ergebnis"
+    }
   },
   "statistics": {
     "tab": {
