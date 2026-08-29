@@ -2,21 +2,31 @@ import { useTranslation } from 'react-i18next';
 
 import { ELO_START, type EloPoint } from '@domain/statistics/elo';
 
-/** Drawing area. Scaled by CSS, so these are proportions rather than pixels. */
-const WIDTH = 640;
-const HEIGHT = 180;
-const PAD_X = 44;
-const PAD_Y = 16;
+/**
+ * Drawing area. Scaled by CSS, so these are proportions rather than pixels —
+ * and a wide, flat box is what keeps the card from towering over the profile.
+ */
+const WIDTH = 900;
+const HEIGHT = 130;
+const PAD_LEFT = 38;
+const PAD_RIGHT = 10;
+const PAD_Y = 12;
 
 /** Above this many results the dots merge into the line and only clutter it. */
 const DOTS_BELOW = 40;
 
 /**
- * How a team's rating moved over time.
+ * How a team's rating moved, result by result.
  *
- * Positioned by date rather than by result number, so two seasons apart look
- * two seasons apart. That matters for reading a career: a team that climbed over
- * three years did something different from one that climbed over three weekends.
+ * One step per match rather than a time axis. A rating changes when a match is
+ * played and at no other moment, so the gaps between events carry no rating
+ * information — and drawing them turns a season's worth of results into a
+ * cluster with a long flat line beside it. Worse, an archive imported in bulk
+ * shares one timestamp per tournament, which would stack a whole event on a
+ * single vertical line.
+ *
+ * The dates still bound the picture, in the caption, so the line is placed in
+ * time without being spaced by it.
  *
  * The line is drawn against the rating everybody starts from, because a rating
  * on its own says nothing — 1043 is only meaningful next to the 1000 it grew
@@ -37,21 +47,9 @@ export function EloChart({ points }: { points: readonly EloPoint[] }) {
   const top = high + headroom;
   const bottom = low - headroom;
 
-  const times = points.map((point) => Date.parse(point.at));
-  const first = Math.min(...times);
-  const last = Math.max(...times);
-  const span = last - first;
-
   const xOf = (index: number): number => {
-    const inner = WIDTH - PAD_X - PAD_Y;
-    /*
-     * Results imported before dates were carried across all share one instant.
-     * Spacing them evenly then says "we do not know when" rather than drawing
-     * every point on top of the first.
-     */
-    const fraction =
-      span > 0 ? ((times[index] ?? first) - first) / span : index / Math.max(points.length - 1, 1);
-    return PAD_X + fraction * inner;
+    const inner = WIDTH - PAD_LEFT - PAD_RIGHT;
+    return PAD_LEFT + (index / Math.max(points.length - 1, 1)) * inner;
   };
 
   const yOf = (rating: number): number =>
@@ -76,7 +74,7 @@ export function EloChart({ points }: { points: readonly EloPoint[] }) {
   const to = (latest?.at ?? '').slice(0, 10);
 
   return (
-    <figure className="grid gap-2">
+    <figure className="grid gap-1.5">
       <svg
         viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
         className="h-auto w-full"
@@ -88,8 +86,8 @@ export function EloChart({ points }: { points: readonly EloPoint[] }) {
       >
         <g className="text-fg-muted">
           <line
-            x1={PAD_X}
-            x2={WIDTH - PAD_Y}
+            x1={PAD_LEFT}
+            x2={WIDTH - PAD_RIGHT}
             y1={baseline}
             y2={baseline}
             stroke="currentColor"
@@ -98,7 +96,7 @@ export function EloChart({ points }: { points: readonly EloPoint[] }) {
             opacity={0.5}
           />
           {marks.map((mark) => (
-            <text key={mark.value} x={0} y={mark.y + 4} fill="currentColor" fontSize={11}>
+            <text key={mark.value} x={0} y={mark.y + 3} fill="currentColor" fontSize={10}>
               {mark.value}
             </text>
           ))}
@@ -109,7 +107,7 @@ export function EloChart({ points }: { points: readonly EloPoint[] }) {
             points={line.join(' ')}
             fill="none"
             stroke="currentColor"
-            strokeWidth={2}
+            strokeWidth={1.5}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -119,12 +117,12 @@ export function EloChart({ points }: { points: readonly EloPoint[] }) {
                 key={point.matchId}
                 cx={xOf(index)}
                 cy={yOf(point.rating)}
-                r={2.5}
+                r={2}
                 fill="currentColor"
               />
             ))}
           {latest !== undefined && (
-            <circle cx={xOf(points.length - 1)} cy={yOf(latest.rating)} r={4} fill="currentColor" />
+            <circle cx={xOf(points.length - 1)} cy={yOf(latest.rating)} r={3} fill="currentColor" />
           )}
         </g>
       </svg>

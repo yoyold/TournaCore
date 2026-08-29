@@ -73,10 +73,14 @@ describe('EloChart', () => {
   });
 
   /**
-   * Two seasons apart has to look like two seasons apart, or the line says
-   * something about form that the results do not.
+   * One step per result, whatever the calendar says.
+   *
+   * A rating changes when a match is played and at no other moment, so the gaps
+   * between events carry nothing to draw. Spacing by date instead leaves a
+   * season crushed into a corner with a long flat line beside it — and a whole
+   * tournament imported at once stacked on a single vertical.
    */
-  it('spaces the points by when they happened', () => {
+  it('spaces the points evenly however far apart they were played', () => {
     render(
       <EloChart
         points={[
@@ -88,12 +92,11 @@ describe('EloChart', () => {
     );
 
     const [a, b, c] = polyline();
-    // The first two are a month apart, the last six years later.
-    expect((b?.x ?? 0) - (a?.x ?? 0)).toBeLessThan((c?.x ?? 0) - (b?.x ?? 0));
+    expect((b?.x ?? 0) - (a?.x ?? 0)).toBeCloseTo((c?.x ?? 0) - (b?.x ?? 0));
   });
 
-  /** Results carrying one timestamp say nothing about when, only about order. */
-  it('spaces points evenly when every result shares a moment', () => {
+  /** A whole tournament imported at once must not land on one vertical line. */
+  it('spreads results that all carry the same timestamp', () => {
     render(
       <EloChart
         points={[
@@ -104,8 +107,67 @@ describe('EloChart', () => {
       />,
     );
 
-    const [a, b, c] = polyline();
-    expect((b?.x ?? 0) - (a?.x ?? 0)).toBeCloseTo((c?.x ?? 0) - (b?.x ?? 0));
+    const xs = polyline().map((position) => position.x);
+    expect(new Set(xs).size).toBe(3);
+  });
+
+  /**
+   * The shape an imported archive actually has: four tournaments, each written
+   * in one go and so carrying one timestamp for all of its results. Spaced by
+   * date this drew four vertical lines joined by long flat runs, which says
+   * nothing about the team and hides every result inside the verticals.
+   */
+  it('spreads an archive of tournaments that were each imported at once', () => {
+    const days = [
+      '2026-08-24T10:00:00.000Z',
+      '2026-08-24T11:00:00.000Z',
+      '2026-08-24T12:00:00.000Z',
+      '2026-08-25T09:00:00.000Z',
+    ];
+    const archive = days.flatMap((at, tournament) =>
+      Array.from({ length: 5 }, (_, index) =>
+        point(1000 + index * 4 - tournament * 6, at, tournament * 5 + index),
+      ),
+    );
+
+    render(<EloChart points={archive} />);
+
+    const xs = polyline().map((position) => position.x);
+    expect(xs).toHaveLength(20);
+    // Every result gets its own place, none of them shared with another.
+    expect(new Set(xs).size).toBe(20);
+
+    // And the places are the same distance apart throughout, so no stretch of
+    // the line is emptier than any other.
+    const steps = xs.slice(1).map((x, index) => x - (xs[index] ?? 0));
+    for (const step of steps) expect(step).toBeCloseTo(steps[0] ?? 0);
+  });
+
+  it('draws the line across the full width', () => {
+    render(
+      <EloChart
+        points={[
+          point(1000, '2026-01-01T00:00:00.000Z', 0),
+          point(1010, '2026-02-01T00:00:00.000Z', 1),
+          point(1020, '2026-03-01T00:00:00.000Z', 2),
+        ]}
+      />,
+    );
+
+    const xs = polyline().map((position) => position.x);
+    const viewBox = document.querySelector('svg')?.getAttribute('viewBox')?.split(' ') ?? [];
+    const width = Number(viewBox[2]);
+
+    expect(Math.min(...xs)).toBeLessThan(width * 0.1);
+    expect(Math.max(...xs)).toBeGreaterThan(width * 0.9);
+  });
+
+  /** Tall enough to read, short enough not to dominate the profile. */
+  it('is drawn wide and flat', () => {
+    render(<EloChart points={[point(1000, '2026-01-01T00:00:00.000Z', 0)]} />);
+
+    const viewBox = document.querySelector('svg')?.getAttribute('viewBox')?.split(' ') ?? [];
+    expect(Number(viewBox[2]) / Number(viewBox[3])).toBeGreaterThan(5);
   });
 
   /**
