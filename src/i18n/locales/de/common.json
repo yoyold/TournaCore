@@ -36,7 +36,8 @@
     "skipToContent": "Zum Inhalt springen",
     "yes": "Ja",
     "no": "Nein",
-    "add": "Hinzufügen"
+    "add": "Hinzufügen",
+    "dismiss": "Hinweis ausblenden"
   },
   "placeholder": {
     "inDevelopment": "Diese Ansicht befindet sich in Entwicklung"
@@ -100,7 +101,25 @@
     "matchDatesApply_one": "{{count}} Ergebnis umdatieren",
     "matchDatesSafety": "Geändert wird ausschließlich der Zeitpunkt. Ergebnisse, Teilnehmer und Paarungen bleiben unangetastet.",
     "matchDatesDone": "{{count}} Ergebnisse umdatiert.",
-    "matchDatesDone_one": "{{count}} Ergebnis umdatiert."
+    "matchDatesDone_one": "{{count}} Ergebnis umdatiert.",
+    "storage": "Datenspeicher",
+    "storageState": {
+      "persisted": "Dauerhaft gesichert",
+      "best_effort": "Kann vom Browser gelöscht werden",
+      "unsupported": "Browser gibt keine Auskunft",
+      "unknown": "Wird geprüft …"
+    },
+    "storageHint": {
+      "persisted": "Der Browser hat zugesagt, diese Daten nicht von sich aus zu verwerfen. Ein Löschen der Browserdaten entfernt sie trotzdem.",
+      "best_effort": "Der Browser darf diesen Speicher jederzeit freigeben — bei Platzmangel oder weil er die Seite für selten genutzt hält. TournaCore hat keinen Server, aus dem sich etwas zurückholen ließe.",
+      "unsupported": "Dieser Browser kennt keine dauerhafte Speicherzusage. Ein regelmäßiger Export ist hier der einzige Schutz.",
+      "unknown": "Der Zustand des Speichers wird gerade ermittelt."
+    },
+    "storageUsed": "Belegt: {{size}}",
+    "storageRequest": "Dauerhafte Speicherung anfordern",
+    "storageExport": "Jetzt sichern",
+    "storageDetails": "Details",
+    "storageWarning": "Dein Browser darf diese Turniere jederzeit löschen. Es gibt keine Kopie außerhalb dieses Geräts."
   },
   "privacy": {
     "localOnly": "Alle Daten bleiben auf deinem Gerät",

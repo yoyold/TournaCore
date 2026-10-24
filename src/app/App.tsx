@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom';
 
 import { useDataStore } from '@store/slices/dataSlice';
 import { useSettingsStore } from '@store/slices/settingsSlice';
+import { useStorageStore } from '@store/slices/storageSlice';
 
 import { ErrorBoundary } from './ErrorBoundary';
 import { router } from './router';
@@ -12,11 +13,21 @@ export function App() {
   const { i18n } = useTranslation();
   const language = useSettingsStore((s) => s.language);
   const hydrate = useDataStore((s) => s.hydrate);
+  const ensureDurable = useStorageStore((s) => s.ensureDurable);
 
   // Load persisted data once. Everything the UI shows is derived from it.
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  /*
+   * Ask the browser to keep that data rather than treat it as disposable.
+   * IndexedDB is best effort by default, and this application has no server to
+   * recover from — an evicted database is an archive gone for good.
+   */
+  useEffect(() => {
+    void ensureDurable();
+  }, [ensureDurable]);
 
   /**
    * Apply the persisted language and keep the `lang` attribute in sync. The

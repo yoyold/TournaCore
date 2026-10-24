@@ -36,7 +36,8 @@
     "skipToContent": "Skip to content",
     "yes": "Yes",
     "no": "No",
-    "add": "Add"
+    "add": "Add",
+    "dismiss": "Dismiss notice"
   },
   "placeholder": {
     "inDevelopment": "This view is under development"
@@ -100,7 +101,25 @@
     "matchDatesApply_one": "Re-date {{count}} result",
     "matchDatesSafety": "Only the time changes. Results, participants and fixtures are left exactly as they are.",
     "matchDatesDone": "Re-dated {{count}} results.",
-    "matchDatesDone_one": "Re-dated {{count}} result."
+    "matchDatesDone_one": "Re-dated {{count}} result.",
+    "storage": "Data storage",
+    "storageState": {
+      "persisted": "Kept durably",
+      "best_effort": "The browser may delete it",
+      "unsupported": "This browser will not say",
+      "unknown": "Checking …"
+    },
+    "storageHint": {
+      "persisted": "The browser has promised not to discard this data on its own. Clearing site data still removes it.",
+      "best_effort": "The browser may reclaim this storage at any time — under pressure for space, or because it considers the site rarely used. TournaCore has no server to recover anything from.",
+      "unsupported": "This browser offers no durability promise. A regular export is the only protection here.",
+      "unknown": "Working out what the browser promises."
+    },
+    "storageUsed": "Using {{size}}",
+    "storageRequest": "Ask for durable storage",
+    "storageExport": "Back up now",
+    "storageDetails": "Details",
+    "storageWarning": "Your browser is allowed to delete these tournaments at any time. There is no copy anywhere but this device."
   },
   "privacy": {
     "localOnly": "All data stays on your device",

@@ -2,6 +2,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet } from 'react-router-dom';
 
+import { StorageNotice } from '@components/ui/StorageNotice';
+
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -47,6 +49,8 @@ export function AppShell() {
           setCollapsed((value) => !value);
         }}
       />
+
+      <StorageNotice />
 
       <div className="flex min-h-0 flex-1">
         <Sidebar collapsed={collapsed} />
