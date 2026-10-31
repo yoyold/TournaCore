@@ -474,19 +474,31 @@
     "vs": "vs",
     "groupName": "Group {{index}}",
     "decidedBy": "Decided by: {{criterion}}",
+    "tiebreakerOrder": "Tiebreaker order",
+    "tiebreakerHint": "Applies to every group in this stage. Points always come first and seeding always last — in between, the order decides which criterion settles a tie on points. The tables reorder immediately.",
+    "tiebreakerEarlier": "Move {{criterion}} earlier",
+    "tiebreakerLater": "Move {{criterion}} later",
+    "tiebreakerReset": "Restore default",
     "tiebreaker": {
+      "points": "Points",
       "head_to_head": "Head-to-head",
       "map_difference": "Map difference",
       "maps_won": "Maps won",
       "round_difference": "Round difference",
-      "seed": "Seed"
+      "buchholz": "Buchholz",
+      "median_buchholz": "Median Buchholz",
+      "seed": "Seed",
+      "manual": "Manual"
     },
     "tiebreakerShort": {
       "head_to_head": "H2H",
       "map_difference": "MD",
       "maps_won": "MW",
       "round_difference": "RD",
-      "seed": "S"
+      "buchholz": "BH",
+      "median_buchholz": "MBH",
+      "seed": "S",
+      "manual": "M"
     }
   },
   "registration": {

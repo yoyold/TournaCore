@@ -42,6 +42,50 @@ export const DEFAULT_TIEBREAKERS: readonly Tiebreaker[] = [
   'seed',
 ];
 
+/**
+ * Whether a criterion holds a fixed place in the chain.
+ *
+ * Points is not a tie-break at all — it is what the table ranks by, and lifting
+ * anything above it would stop being a league table. Seed is the only criterion
+ * that always separates two entries, so it has to stay last for the order to be
+ * total: anything placed after it would never be reached.
+ */
+export function isPinnedTiebreaker(tiebreaker: Tiebreaker): boolean {
+  return tiebreaker === 'points' || tiebreaker === 'seed';
+}
+
+/**
+ * Moves one criterion past its neighbour, leaving the pinned ones where they are.
+ *
+ * Which criterion applies first is a rule rather than a fact. Whether a group is
+ * decided by the match between the tied teams or by their map difference across
+ * the whole group differs from one competition to the next, and both are
+ * defensible — so the order belongs to the organiser.
+ */
+export function moveTiebreaker(
+  chain: readonly Tiebreaker[],
+  tiebreaker: Tiebreaker,
+  direction: -1 | 1,
+): Tiebreaker[] {
+  const movable = chain.filter((entry) => !isPinnedTiebreaker(entry));
+  const from = movable.indexOf(tiebreaker);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= movable.length) return [...chain];
+
+  const reordered = [...movable];
+  const [moved] = reordered.splice(from, 1);
+  if (moved !== undefined) reordered.splice(to, 0, moved);
+
+  // Back into the slots the pinned criteria left free, in their new order.
+  let cursor = 0;
+  return chain.map((entry) => {
+    if (isPinnedTiebreaker(entry)) return entry;
+    const replacement = reordered[cursor];
+    cursor += 1;
+    return replacement ?? entry;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Format configuration
 // ---------------------------------------------------------------------------

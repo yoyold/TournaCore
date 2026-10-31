@@ -474,19 +474,31 @@
     "vs": "gegen",
     "groupName": "Gruppe {{index}}",
     "decidedBy": "Entschieden durch: {{criterion}}",
+    "tiebreakerOrder": "Tiebreaker-Reihenfolge",
+    "tiebreakerHint": "Gilt für alle Gruppen dieser Phase. Punkte stehen immer vorn, die Setzung immer hinten — dazwischen entscheidet die Reihenfolge, welches Kriterium bei Punktgleichheit zuerst greift. Die Tabellen ordnen sich sofort neu.",
+    "tiebreakerEarlier": "{{criterion}} nach vorn",
+    "tiebreakerLater": "{{criterion}} nach hinten",
+    "tiebreakerReset": "Standard wiederherstellen",
     "tiebreaker": {
+      "points": "Punkte",
       "head_to_head": "Direkter Vergleich",
       "map_difference": "Mapdifferenz",
       "maps_won": "Gewonnene Maps",
       "round_difference": "Rundendifferenz",
-      "seed": "Setzung"
+      "buchholz": "Buchholz",
+      "median_buchholz": "Median-Buchholz",
+      "seed": "Setzung",
+      "manual": "Manuell"
     },
     "tiebreakerShort": {
       "head_to_head": "DV",
       "map_difference": "MD",
       "maps_won": "MW",
       "round_difference": "RD",
-      "seed": "S"
+      "buchholz": "BH",
+      "median_buchholz": "MBH",
+      "seed": "S",
+      "manual": "M"
     }
   },
   "registration": {

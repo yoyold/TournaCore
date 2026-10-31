@@ -16,6 +16,7 @@ import { useDerivedTournament } from '@hooks/useDerivedTournament';
 import { asId, type Match, type MatchId, type TournamentId } from '@models/index';
 import { BracketArrangementControl } from '@pages/BracketArrangementControl';
 import { RegistrationPanel } from '@pages/RegistrationPanel';
+import { TiebreakerControl } from '@pages/TiebreakerControl';
 import { useDataStore } from '@store/slices/dataSlice';
 import { cn } from '@utils/cn';
 
@@ -224,6 +225,7 @@ export function TournamentDetailPage() {
               </>
             ) : (
               <>
+                <TiebreakerControl stage={stage.stage} />
                 {stage.groupStandings.length > 0 ? (
                   <div className="grid gap-4 xl:grid-cols-2">
                     {stage.groupStandings.map((table, index) => (
