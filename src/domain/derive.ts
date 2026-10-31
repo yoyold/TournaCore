@@ -12,7 +12,7 @@ import {
 } from '@models/index';
 
 import { requireFormat } from './formats/registry';
-import { resolveSeeding, type SeedingSourceStage } from './seeding/resolveSeeding';
+import { entriesPending, resolveSeeding, type SeedingSourceStage } from './seeding/resolveSeeding';
 
 import type { GeneratedStructure, ResolvedStructure, Standing } from './formats/types';
 
@@ -95,11 +95,21 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
       slotCount,
     });
 
+    /*
+     * Asked of the rules rather than of the slot map, because an empty slot on
+     * its own says nothing: a bracket padded past its field has slots nobody
+     * will ever fill, a playoff waiting on its group stage has slots whose
+     * occupant is simply undecided. Reading the second as the first would hand
+     * the whole bracket a walkover and call the tournament finished.
+     */
+    const pending = entriesPending({ rules: stage.entrySeeding, previousStages: sourceStages });
+
     const resolved = format.resolveSlots({
       structure,
       results: outcomes,
       seededSlots,
       config: stage.format as never,
+      entriesPending: pending,
     });
 
     const standingsInput = {

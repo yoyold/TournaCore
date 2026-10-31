@@ -87,9 +87,21 @@ test('creates a group stage feeding a knockout', async ({ page }) => {
   // Qualifying places are marked in the group tables.
   await expect(page.getByText('Quali').first()).toBeVisible();
 
+  /*
+   * Nothing has been played, so nothing is finished. The badge used to appear
+   * the moment the tournament was created: the waiting playoff bracket read as
+   * a bracket of byes, which walked itself over and reported as played out.
+   */
+  await expect(page.getByText('Abgeschlossen')).toHaveCount(0);
+
   // The playoff bracket exists but is still waiting on the groups.
   await page.getByRole('tab', { name: 'Playoffs' }).click();
-  await expect(page.getByRole('group', { name: /Turnierbaum/i })).toBeVisible();
+  const waiting = page.getByRole('group', { name: /Turnierbaum/i });
+  await expect(waiting).toBeVisible();
+
+  // Waiting for an entrant, not past an absent one.
+  await expect(waiting.getByText('Offen').first()).toBeVisible();
+  await expect(waiting.getByText('Freilos')).toHaveCount(0);
 });
 
 /**

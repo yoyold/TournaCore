@@ -141,6 +141,16 @@ export interface ResolveInput<TConfig extends FormatConfig = FormatConfig> {
    * of round n-1, so its pairing rules have to be available at resolution time.
    */
   config: TConfig;
+  /**
+   * Whether an earlier stage is still deciding who enters this one.
+   *
+   * An empty entry slot normally means a bye: the structure is padded past the
+   * field and nobody will ever occupy it. In a stage fed by a previous one it
+   * means the opposite — the entrant exists, it is just not known yet. Treating
+   * those as byes would walk an empty bracket over itself and report a playoff
+   * nobody has played as finished.
+   */
+  entriesPending?: boolean | undefined;
 }
 
 export interface StandingsInput<TConfig extends FormatConfig> {

@@ -156,6 +156,74 @@ describe('group stage into playoffs', () => {
     expect(playoffs?.seededSlots.size).toBe(0);
   });
 
+  /**
+   * Empty is not the same as settled.
+   *
+   * A bracket padded past its field has slots nobody will ever occupy, and
+   * walking the entrants past them is exactly right. A bracket waiting on a
+   * group stage has the same empty slots and the opposite meaning, and reading
+   * them as byes hands every match a walkover — which makes a playoff nobody
+   * has played report as finished, and the tournament with it.
+   */
+  it('shows the waiting playoff bracket as undecided rather than walked over', () => {
+    const state = deriveTournamentState({
+      tournament: tournament(8),
+      stages: [groupStage(), playoffStage()],
+      matches: [],
+    });
+
+    const playoffs = state.byStageId.get(PLAYOFFS);
+    const matches = playoffs?.resolved.matches ?? [];
+
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches.every((match) => !match.isBye)).toBe(true);
+    expect(matches.every((match) => match.status === 'pending')).toBe(true);
+    expect(matches.every((match) => match.slotA.kind === 'tbd')).toBe(true);
+
+    expect(playoffs?.isComplete).toBe(false);
+    expect(state.isComplete).toBe(false);
+    expect(state.finalStandings).toEqual([]);
+  });
+
+  /** The same, for the bracket the double elimination playoff mode produces. */
+  it('shows a waiting double elimination playoff as undecided too', () => {
+    const playoffs: Stage = {
+      ...playoffStage(),
+      format: {
+        kind: 'double_elimination',
+        grandFinal: 'bracket_reset',
+        loserBracketSeeding: 'standard',
+        matchFormats: { default: { kind: 'bo', games: 3 } },
+      },
+    };
+
+    const state = deriveTournamentState({
+      tournament: tournament(8),
+      stages: [groupStage(), playoffs],
+      matches: [],
+    });
+
+    const stage = state.byStageId.get(PLAYOFFS);
+    expect(stage?.resolved.matches.some((match) => match.isBye)).toBe(false);
+    expect(stage?.isComplete).toBe(false);
+    expect(state.isComplete).toBe(false);
+  });
+
+  /**
+   * The group stage itself is seeded straight from the entry list, so nothing
+   * about it is waiting — its tables have to keep counting results as before.
+   */
+  it('still counts group results while the playoffs wait', () => {
+    const state = deriveTournamentState({
+      tournament: tournament(8),
+      stages: [groupStage(), playoffStage()],
+      matches: playGroupStage().slice(0, 1),
+    });
+
+    const table = state.byStageId.get(GROUPS)?.groupStandings[0] ?? [];
+    expect(table.some((entry) => entry.wins === 1)).toBe(true);
+  });
+
   it('fills the bracket from the group tables once the groups finish', () => {
     const matches = playGroupStage();
     const state = deriveTournamentState({

@@ -89,7 +89,7 @@ export function generateSwiss(input: {
  * the pairing would make earlier rounds depend on later ones.
  */
 export function resolveSwiss(input: ResolveInput<SwissConfig>): ResolvedStructure {
-  const { structure, results, seededSlots, config } = input;
+  const { structure, results, seededSlots, config, entriesPending = false } = input;
 
   const seedOf = new Map<ParticipantId, number>();
   for (const [slotIndex, participantId] of [...seededSlots.entries()].sort((a, b) => a[0] - b[0])) {
@@ -108,7 +108,12 @@ export function resolveSwiss(input: ResolveInput<SwissConfig>): ResolvedStructur
     (a, b) => a - b,
   );
 
-  let previousRoundDecided = true;
+  /*
+   * A stage whose entrants are still being played for has nothing to pair, so
+   * every round of it stays undrawn — the same state a Swiss round three is in
+   * before round two has finished, and shown the same way.
+   */
+  let previousRoundDecided = !entriesPending;
 
   for (const round of roundNumbers) {
     const inRound = structure.matches

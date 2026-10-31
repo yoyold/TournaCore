@@ -8,7 +8,7 @@ import {
   type StageId,
 } from '@models/index';
 
-import { resolveSeeding, type SeedingSourceStage } from './resolveSeeding';
+import { entriesPending, resolveSeeding, type SeedingSourceStage } from './resolveSeeding';
 
 import type { ResolvedMatch, ResolvedStructure, Standing } from '../formats/types';
 
@@ -354,5 +354,146 @@ describe('multiple rules', () => {
 
   it('returns nothing for an empty rule set', () => {
     expect(run([]).size).toBe(0);
+  });
+});
+
+/**
+ * Whether the slots a rule leaves empty are waiting for somebody or are simply
+ * surplus. The slot map cannot tell the two apart, and a format that guesses
+ * wrong either stalls a finished bracket or walks an empty one over itself.
+ */
+describe('entriesPending', () => {
+  const waiting = (rules: SeedingRule[], previous = new Map<StageId, SeedingSourceStage>()) =>
+    entriesPending({ rules, previousStages: previous });
+
+  it('is false for a stage seeded from the entry list', () => {
+    expect(waiting([rule({ kind: 'participants' }, 8, 'as_ranked')])).toBe(false);
+  });
+
+  it('is false for a manual list, which names its entrants outright', () => {
+    expect(waiting([rule({ kind: 'manual', participantIds: [pid(1)] }, 1, 'as_ranked')])).toBe(
+      false,
+    );
+  });
+
+  it('waits while the stage it reads from is unfinished', () => {
+    const previous = new Map([[STAGE, sourceStage({ isComplete: false })]]);
+    const source = {
+      kind: 'stage_standings' as const,
+      stageId: STAGE,
+      placeRange: { from: 1, to: 2 },
+    };
+
+    expect(waiting([rule(source, 2, 'as_ranked')], previous)).toBe(true);
+  });
+
+  it('stops waiting once that stage finishes', () => {
+    const previous = new Map([[STAGE, sourceStage({ isComplete: true })]]);
+    const source = {
+      kind: 'group_standings' as const,
+      stageId: STAGE,
+      placeRange: { from: 1, to: 2 },
+    };
+
+    expect(waiting([rule(source, 2, 'as_ranked')], previous)).toBe(false);
+  });
+
+  /** A stage that is not there yet cannot have produced anybody. */
+  it('waits on a source stage that has not been derived', () => {
+    const source = {
+      kind: 'stage_standings' as const,
+      stageId: STAGE,
+      placeRange: { from: 1, to: 2 },
+    };
+    expect(waiting([rule(source, 2, 'as_ranked')])).toBe(true);
+  });
+
+  /**
+   * Losers of one round, not of the whole bracket: a repechage fed by round one
+   * can start while the winner bracket is still running, and holding it until
+   * the stage finishes would hold it for nothing.
+   */
+  it('waits only for the round it takes losers from', () => {
+    const match = (
+      round: number,
+      indexInRound: number,
+      loserId?: ParticipantId,
+    ): ResolvedMatch => ({
+      id: asId<ResolvedMatch['id']>(`m${String(round)}-${String(indexInRound)}`),
+      position: { bracket: 'winner', round, indexInRound },
+      format: { kind: 'bo', games: 3 },
+      slotA: { kind: 'tbd', source: { kind: 'tbd' } },
+      slotB: { kind: 'tbd', source: { kind: 'tbd' } },
+      status: loserId === undefined ? 'ready' : 'completed',
+      isBye: false,
+      ...(loserId !== undefined ? { loserId } : {}),
+    });
+
+    const stage = (matches: ResolvedMatch[]) =>
+      new Map([
+        [
+          STAGE,
+          sourceStage({
+            isComplete: false,
+            resolved: { stageId: STAGE, matches, byId: new Map(), isComplete: false },
+          }),
+        ],
+      ]);
+
+    const source = { kind: 'bracket_losers' as const, stageId: STAGE, round: 0 };
+
+    // Round 0 decided, round 1 still running: nothing to wait for.
+    expect(waiting([rule(source, 2, 'as_ranked')], stage([match(0, 0, pid(4)), match(1, 0)]))).toBe(
+      false,
+    );
+
+    expect(waiting([rule(source, 2, 'as_ranked')], stage([match(0, 0)]))).toBe(true);
+  });
+
+  /** A cancelled match produces nobody, and waiting for it would never end. */
+  it('does not wait on a match that will never be played', () => {
+    const cancelled: ResolvedMatch = {
+      id: asId<ResolvedMatch['id']>('m0'),
+      position: { bracket: 'winner', round: 0, indexInRound: 0 },
+      format: { kind: 'bo', games: 3 },
+      slotA: { kind: 'bye' },
+      slotB: { kind: 'bye' },
+      status: 'cancelled',
+      isBye: false,
+    };
+
+    const previous = new Map([
+      [
+        STAGE,
+        sourceStage({
+          isComplete: false,
+          resolved: { stageId: STAGE, matches: [cancelled], byId: new Map(), isComplete: false },
+        }),
+      ],
+    ]);
+
+    expect(
+      waiting(
+        [rule({ kind: 'bracket_losers', stageId: STAGE, round: 0 }, 2, 'as_ranked')],
+        previous,
+      ),
+    ).toBe(false);
+  });
+
+  it('waits when any one rule of several is waiting', () => {
+    const previous = new Map([[STAGE, sourceStage({ isComplete: false })]]);
+    const rules: SeedingRule[] = [
+      rule({ kind: 'participants' }, 4, 'as_ranked'),
+      {
+        ...rule(
+          { kind: 'stage_standings', stageId: STAGE, placeRange: { from: 1, to: 2 } },
+          2,
+          'as_ranked',
+        ),
+        id: asId<SeedingRule['id']>('rule-2'),
+      },
+    ];
+
+    expect(waiting(rules, previous)).toBe(true);
   });
 });

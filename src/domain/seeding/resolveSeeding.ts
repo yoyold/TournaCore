@@ -76,6 +76,56 @@ export function resolveSeeding(input: ResolveSeedingInput): Map<number, Particip
   return slots;
 }
 
+/**
+ * Whether any of a stage's seeding rules is still waiting on its source.
+ *
+ * The slots such a rule would fill are empty right now, and emptiness alone
+ * cannot tell the two cases apart: a bracket padded past its field has slots
+ * nobody will ever occupy, while a playoff waiting on a group stage has slots
+ * whose occupant simply has not been decided. Only the rule knows which it is,
+ * which is why this is answered here rather than inferred from the slot map.
+ */
+export function entriesPending(input: {
+  rules: readonly SeedingRule[];
+  previousStages: ReadonlyMap<StageId, SeedingSourceStage>;
+}): boolean {
+  return input.rules.some((rule) => sourcePending(rule.source, input.previousStages));
+}
+
+function sourcePending(
+  source: SeedingSource,
+  previousStages: ReadonlyMap<StageId, SeedingSourceStage>,
+): boolean {
+  switch (source.kind) {
+    case 'stage_standings':
+    case 'group_standings': {
+      return previousStages.get(source.stageId)?.isComplete !== true;
+    }
+
+    case 'bracket_losers': {
+      // Only the named round has to be decided — the rest of the bracket may
+      // well still be running, and waiting for it would be waiting for nothing.
+      const stage = previousStages.get(source.stageId);
+      if (!stage) return true;
+      return stage.resolved.matches.some(
+        (match) =>
+          match.position.round === source.round &&
+          !match.isBye &&
+          match.status !== 'cancelled' &&
+          match.loserId === undefined,
+      );
+    }
+
+    // Both name their entrants outright, so there is nothing to wait for.
+    case 'participants':
+    case 'manual':
+      return false;
+
+    default:
+      return assertNever(source, 'unhandled seeding source');
+  }
+}
+
 function participantsFromSource(
   source: SeedingSource,
   participants: readonly Participant[],

@@ -247,7 +247,17 @@ describe('deriveTournamentState', () => {
       // that would reshuffle with every new result.
       const later = state.byStageId.get(STAGE_B);
       expect(later?.seededSlots.size).toBe(0);
-      expect(later?.resolved.matches[0]?.slotA.kind).toBe('bye');
+
+      /*
+       * Undetermined, not absent. An empty slot in a bracket fed by an earlier
+       * stage has an occupant nobody has played for yet, and reading it as a
+       * bye would award the whole bracket to nobody and call it finished.
+       */
+      expect(later?.resolved.matches[0]?.slotA.kind).toBe('tbd');
+      expect(later?.resolved.matches[0]?.status).toBe('pending');
+      expect(later?.isComplete).toBe(false);
+      expect(state.isComplete).toBe(false);
+      expect(state.finalStandings).toEqual([]);
     });
 
     it('feeds the qualifier result into the next stage', () => {

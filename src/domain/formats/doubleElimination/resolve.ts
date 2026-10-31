@@ -32,14 +32,14 @@ import type {
 export function resolveDoubleElimination(
   input: ResolveInput<DoubleEliminationConfig>,
 ): ResolvedStructure {
-  const { structure, results, seededSlots } = input;
+  const { structure, results, seededSlots, entriesPending = false } = input;
 
   const resolved = new Map<MatchId, ResolvedMatch>();
   const ordered: ResolvedMatch[] = [];
 
   for (const match of structure.matches) {
-    const slotA = resolveSlot(match.slotA, resolved, seededSlots);
-    const slotB = resolveSlot(match.slotB, resolved, seededSlots);
+    const slotA = resolveSlot(match.slotA, resolved, seededSlots, entriesPending);
+    const slotB = resolveSlot(match.slotB, resolved, seededSlots, entriesPending);
 
     const participantA = slotA.kind === 'participant' ? slotA.participantId : undefined;
     const participantB = slotB.kind === 'participant' ? slotB.participantId : undefined;
@@ -132,6 +132,7 @@ function resolveSlot(
   slot: MatchSlot,
   resolved: ReadonlyMap<MatchId, ResolvedMatch>,
   seededSlots: ReadonlyMap<number, ParticipantId>,
+  entriesPending: boolean,
 ): ResolvedSlot {
   switch (slot.kind) {
     case 'participant':
@@ -142,7 +143,10 @@ function resolveSlot(
 
     case 'seeded': {
       const participantId = seededSlots.get(slot.slotIndex);
-      return participantId === undefined ? { kind: 'bye' } : { kind: 'participant', participantId };
+      if (participantId !== undefined) return { kind: 'participant', participantId };
+      // Empty because the bracket is wider than the field, or empty because the
+      // stage that fills it has not finished. Only the second one is waiting.
+      return entriesPending ? { kind: 'tbd', source: slot } : { kind: 'bye' };
     }
 
     case 'winner_of':

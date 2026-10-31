@@ -14,7 +14,7 @@ import type {
   TournamentFormat,
   ValidationResult,
 } from '../types';
-import type { MatchId, ParticipantId, RoundRobinConfig, StageId } from '@models/index';
+import type { MatchId, MatchSlot, ParticipantId, RoundRobinConfig, StageId } from '@models/index';
 
 /** Upper bound: a full double round robin above this is unmanageable in one table. */
 const MAX_SLOTS = 64;
@@ -26,17 +26,23 @@ const MAX_SLOTS = 64;
  * constraints and no propagation, unlike an elimination bracket.
  */
 export function resolveRoundRobin(input: ResolveInput): ResolvedStructure {
-  const { structure, results, seededSlots } = input;
+  const { structure, results, seededSlots, entriesPending = false } = input;
 
   const resolved = new Map<MatchId, ResolvedMatch>();
   const ordered: ResolvedMatch[] = [];
 
   for (const match of structure.matches) {
-    const slotA = resolveSlot(match.slotA, seededSlots);
-    const slotB = resolveSlot(match.slotB, seededSlots);
+    const slotA = resolveSlot(match.slotA, seededSlots, entriesPending);
+    const slotB = resolveSlot(match.slotB, seededSlots, entriesPending);
 
     const participantA = slotA.kind === 'participant' ? slotA.participantId : undefined;
     const participantB = slotB.kind === 'participant' ? slotB.participantId : undefined;
+
+    /*
+     * A slot still waiting on an earlier stage is not an absent opponent: the
+     * fixture will be played, by somebody nobody has named yet.
+     */
+    const isPending = slotA.kind === 'tbd' || slotB.kind === 'tbd';
 
     /*
      * An unfilled slot means the entry list is shorter than the schedule expects.
@@ -44,18 +50,20 @@ export function resolveRoundRobin(input: ResolveInput): ResolvedStructure {
      * being awarded to whoever happens to be present — a league where a team
      * collects points against nobody is not a league.
      */
-    const isBye = participantA === undefined || participantB === undefined;
+    const isBye = !isPending && (participantA === undefined || participantB === undefined);
 
     const recorded = results.get(match.id);
-    const outcome = isBye ? undefined : recorded;
+    const outcome = isBye || isPending ? undefined : recorded;
 
-    const status = isBye
-      ? ('cancelled' as const)
-      : outcome
-        ? outcome.reason === 'played' || outcome.reason === 'manual'
-          ? ('completed' as const)
-          : ('walkover' as const)
-        : ('ready' as const);
+    const status = isPending
+      ? ('pending' as const)
+      : isBye
+        ? ('cancelled' as const)
+        : outcome
+          ? outcome.reason === 'played' || outcome.reason === 'manual'
+            ? ('completed' as const)
+            : ('walkover' as const)
+          : ('ready' as const);
 
     const winnerId =
       outcome && outcome.winner !== 'draw'
@@ -93,15 +101,17 @@ export function resolveRoundRobin(input: ResolveInput): ResolvedStructure {
 }
 
 function resolveSlot(
-  slot: { kind: string; slotIndex?: number; participantId?: ParticipantId },
+  slot: MatchSlot,
   seededSlots: ReadonlyMap<number, ParticipantId>,
+  entriesPending: boolean,
 ): ResolvedSlot {
-  if (slot.kind === 'participant' && slot.participantId !== undefined) {
+  if (slot.kind === 'participant') {
     return { kind: 'participant', participantId: slot.participantId };
   }
-  if (slot.kind === 'seeded' && slot.slotIndex !== undefined) {
+  if (slot.kind === 'seeded') {
     const participantId = seededSlots.get(slot.slotIndex);
-    return participantId === undefined ? { kind: 'bye' } : { kind: 'participant', participantId };
+    if (participantId !== undefined) return { kind: 'participant', participantId };
+    return entriesPending ? { kind: 'tbd', source: slot } : { kind: 'bye' };
   }
   return { kind: 'bye' };
 }

@@ -20,14 +20,14 @@ function occupant(slot: ResolvedSlot): ParticipantId | undefined {
  * through exactly the same mechanism as a played result.
  */
 export function resolveSingleElimination(input: ResolveInput): ResolvedStructure {
-  const { structure, results, seededSlots } = input;
+  const { structure, results, seededSlots, entriesPending = false } = input;
 
   const resolved = new Map<MatchId, ResolvedMatch>();
   const ordered: ResolvedMatch[] = [];
 
   for (const match of structure.matches) {
-    const slotA = resolveSlot(match.slotA, resolved, seededSlots);
-    const slotB = resolveSlot(match.slotB, resolved, seededSlots);
+    const slotA = resolveSlot(match.slotA, resolved, seededSlots, entriesPending);
+    const slotB = resolveSlot(match.slotB, resolved, seededSlots, entriesPending);
 
     const participantA = occupant(slotA);
     const participantB = occupant(slotB);
@@ -94,6 +94,7 @@ function resolveSlot(
   slot: MatchSlot,
   resolved: ReadonlyMap<MatchId, ResolvedMatch>,
   seededSlots: ReadonlyMap<number, ParticipantId>,
+  entriesPending: boolean,
 ): ResolvedSlot {
   switch (slot.kind) {
     case 'participant':
@@ -104,9 +105,14 @@ function resolveSlot(
 
     case 'seeded': {
       const participantId = seededSlots.get(slot.slotIndex);
-      // An entry slot with no participant is a bye, not an error: the bracket is
-      // padded to a power of two and the surplus slots stay empty by design.
-      return participantId === undefined ? { kind: 'bye' } : { kind: 'participant', participantId };
+      if (participantId !== undefined) return { kind: 'participant', participantId };
+      /*
+       * An entry slot with no participant is a bye, not an error: the bracket is
+       * padded to a power of two and the surplus slots stay empty by design.
+       * Unless the entrants are still being played for, in which case the slot
+       * has an occupant and nobody knows yet who it is.
+       */
+      return entriesPending ? { kind: 'tbd', source: slot } : { kind: 'bye' };
     }
 
     case 'winner_of': {
