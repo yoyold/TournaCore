@@ -27,6 +27,7 @@ import { mergeTeams as merge } from '@services/team/mergeTeams';
 import { drawRegionalGroups } from '@services/tournament/groupDraw';
 import { repairMatchDates, type RepairedTournament } from '@services/tournament/matchDates';
 import { applyField, fieldOf, resizeEntrySlots } from '@services/tournament/registration';
+import { repairSeriesScores, type RepairedSeries } from '@services/tournament/seriesScores';
 
 import type { AssembledTournament } from '@services/tournament/assembleTournament';
 import type { ParsedParticipant } from '@services/tournament/parseParticipants';
@@ -105,6 +106,20 @@ export interface DataState {
    * than the order it was played.
    */
   applyMatchDates: () => Promise<number>;
+
+  /**
+   * Results that read as a series score typed into the first map, with the maps
+   * they would become. Pure: nothing is written until `applySeriesScores` runs.
+   */
+  pendingSeriesScores: () => RepairedSeries[];
+
+  /**
+   * Expands a series score written on one map into the maps it consists of.
+   *
+   * Such a result is stored but counts for nothing: one map win out of the two
+   * a best-of-three needs leaves the match open, so every table ignores it.
+   */
+  applySeriesScores: () => Promise<number>;
 
   removeTournament: (id: TournamentId) => Promise<void>;
   /** Archives rather than deletes, to keep match history intact. */
@@ -372,6 +387,31 @@ export const useDataStore = create<DataState>()((set, get) => {
     applyMatchDates: async () => {
       const changed = get()
         .pendingMatchDates()
+        .flatMap((entry) => entry.matches);
+
+      if (changed.length === 0) return 0;
+
+      await guard(async () => {
+        const timestamp = now();
+        const next = changed.map((match) => ({ ...match, updatedAt: timestamp }));
+        await matchRepository.putMany(next);
+        set((state) => ({ matches: { ...state.matches, ...index(next) } }));
+      });
+
+      return changed.length;
+    },
+
+    pendingSeriesScores: () => {
+      const state = get();
+      return repairSeriesScores({
+        tournaments: Object.values(state.tournaments),
+        matches: Object.values(state.matches),
+      });
+    },
+
+    applySeriesScores: async () => {
+      const changed = get()
+        .pendingSeriesScores()
         .flatMap((entry) => entry.matches);
 
       if (changed.length === 0) return 0;

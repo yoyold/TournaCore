@@ -103,11 +103,8 @@ test('leaves the results alone', async ({ page }) => {
   // Record one result, then rename the tournament around it.
   await page.getByRole('button', { name: /gegen/ }).first().click();
   const scores = page.getByRole('spinbutton');
-  await scores.nth(0).fill('13');
-  await scores.nth(1).fill('7');
-  await page.getByRole('button', { name: 'Map hinzufügen' }).click();
-  await page.getByRole('spinbutton').nth(2).fill('13');
-  await page.getByRole('spinbutton').nth(3).fill('9');
+  await scores.nth(0).fill('2');
+  await scores.nth(1).fill('0');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('dialog', { name: 'Ergebnis eintragen' })).toHaveCount(0);
 

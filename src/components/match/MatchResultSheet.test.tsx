@@ -83,6 +83,14 @@ function setup(options: { match?: ResolvedMatch; stored?: Match } = {}) {
 
 const scoreFields = () => screen.getAllByRole('spinbutton') as unknown as HTMLInputElement[];
 
+/**
+ * The panel opens on the series score, which is how a result is usually
+ * written down. These cases are about the map-by-map path, so they switch.
+ */
+async function mapByMap(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Maps einzeln' }));
+}
+
 describe('MatchResultSheet', () => {
   it('shows both teams', () => {
     setup();
@@ -93,6 +101,7 @@ describe('MatchResultSheet', () => {
 
   it('saves a decided series with the derived winner', async () => {
     const { onSave, user } = setup();
+    await mapByMap(user);
 
     const [a1, b1] = scoreFields();
     await user.type(a1!, '13');
@@ -114,6 +123,7 @@ describe('MatchResultSheet', () => {
 
   it('leaves a half-played series without an outcome', async () => {
     const { onSave, user } = setup();
+    await mapByMap(user);
 
     const [a1, b1] = scoreFields();
     await user.type(a1!, '13');
@@ -130,6 +140,7 @@ describe('MatchResultSheet', () => {
    */
   it('ignores rows where no score was entered', async () => {
     const { onSave, user } = setup();
+    await mapByMap(user);
 
     await user.click(screen.getByRole('button', { name: /map hinzufügen/i }));
     const [a1, b1] = scoreFields();
@@ -143,6 +154,7 @@ describe('MatchResultSheet', () => {
 
   it('saves on Enter, so a result needs no mouse', async () => {
     const { onSave, user } = setup();
+    await mapByMap(user);
 
     const [a1, b1] = scoreFields();
     await user.type(a1!, '13');
@@ -195,6 +207,7 @@ describe('MatchResultSheet', () => {
       updatedAt: now(),
     };
 
+    // Map scores of its own, so it opens map by map rather than as a series.
     setup({ stored });
 
     const [a1, b1] = scoreFields();
@@ -207,5 +220,123 @@ describe('MatchResultSheet', () => {
 
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Recording a best-of series by its score.
+ *
+ * This is the path that was missing. Without it a 2:1 had to be written on the
+ * only row the panel offered, where it reads as a single map won 2-1 — one map
+ * win out of the two a best-of-three needs. The result was stored, the match
+ * stayed open, and every table ignored it.
+ */
+describe('MatchResultSheet, series score', () => {
+  it('opens on the series score', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'Serienstand' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('turns a series score into the maps it consists of', async () => {
+    const { onSave, user } = setup();
+
+    const [a, b] = scoreFields();
+    await user.type(a!, '2');
+    await user.type(b!, '1');
+    await user.click(screen.getByRole('button', { name: /speichern/i }));
+
+    const saved = onSave.mock.calls[0]![0];
+    expect(saved.games).toHaveLength(3);
+    expect(saved.games.filter((game) => game.winner === 'A')).toHaveLength(2);
+    expect(saved.games.filter((game) => game.winner === 'B')).toHaveLength(1);
+    expect(saved.outcome?.winner).toBe('A');
+    expect(saved.outcome?.reason).toBe('played');
+  });
+
+  it('decides the match, which is the entire point', async () => {
+    const { onSave, user } = setup();
+
+    const [a, b] = scoreFields();
+    await user.type(a!, '0');
+    await user.type(b!, '2');
+    await user.click(screen.getByRole('button', { name: /speichern/i }));
+
+    expect(onSave.mock.calls[0]![0].outcome?.winner).toBe('B');
+  });
+
+  /** A best-of-three cannot end 3:1, and saying so beats storing nonsense. */
+  it('refuses a score the format could not produce', async () => {
+    const { onSave, user } = setup();
+
+    const [a, b] = scoreFields();
+    await user.type(a!, '3');
+    await user.type(b!, '1');
+
+    expect(screen.getByText(/kann es in einem BO3 nicht geben/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /speichern/i }));
+    expect(onSave.mock.calls[0]![0].games).toHaveLength(0);
+    expect(onSave.mock.calls[0]![0].outcome).toBeUndefined();
+  });
+
+  it('says a series is still open before it is complete', async () => {
+    const { user } = setup();
+
+    const [a, b] = scoreFields();
+    await user.type(a!, '1');
+    await user.type(b!, '1');
+
+    expect(screen.getByText(/kann es in einem BO3 nicht geben/i)).toBeInTheDocument();
+  });
+
+  /** Reopening a result recorded as a series shows it as one. */
+  it('reads a stored series back', () => {
+    const stored: Match = {
+      id: MATCH,
+      tournamentId: TOURNAMENT,
+      stageId: STAGE,
+      position: structural.position,
+      slotA: structural.slotA,
+      slotB: structural.slotB,
+      format: structural.format,
+      games: [
+        {
+          id: asId<Match['games'][number]['id']>('g1'),
+          index: 1,
+          scoreA: 0,
+          scoreB: 0,
+          winner: 'A',
+        },
+        {
+          id: asId<Match['games'][number]['id']>('g2'),
+          index: 2,
+          scoreA: 0,
+          scoreB: 0,
+          winner: 'A',
+        },
+        {
+          id: asId<Match['games'][number]['id']>('g3'),
+          index: 3,
+          scoreA: 0,
+          scoreB: 0,
+          winner: 'B',
+        },
+      ],
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    setup({ stored });
+
+    expect(screen.getByRole('button', { name: 'Serienstand' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const [a, b] = scoreFields();
+    expect(a!.value).toBe('2');
+    expect(b!.value).toBe('1');
   });
 });

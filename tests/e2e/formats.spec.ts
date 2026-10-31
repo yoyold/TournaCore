@@ -11,6 +11,14 @@ const TEAMS = [
   'Quiet Static, PL',
 ].join('\n');
 
+/**
+ * The result panel opens on the series score, which is how a result is usually
+ * written down. Cases about the individual maps switch to that path.
+ */
+async function mapByMap(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Maps einzeln' }).click();
+}
+
 async function startWizard(page: Page, name: string, teams = TEAMS) {
   await page.goto('./#/tournaments/new');
   await page.getByLabel(/Turniername/).fill(name);
@@ -166,6 +174,7 @@ test('records a league result and updates the table', async ({ page }) => {
   // Enter the first fixture. The wizard defaults to best-of-three, so one map
   // leaves the series open and awards nothing — both have to be recorded.
   await page.getByRole('button', { name: /gegen/ }).first().click();
+  await mapByMap(page);
   const scores = page.getByRole('spinbutton');
   await scores.nth(0).fill('13');
   await scores.nth(1).fill('7');
@@ -204,12 +213,10 @@ test('a defeat in double elimination is not the end', async ({ page }) => {
     .getByRole('button', { name: /Nova Collective/ })
     .first()
     .click();
+  // This is about where the loser ends up, so the series score is enough.
   const scores = page.getByRole('spinbutton');
-  await scores.nth(0).fill('7');
-  await scores.nth(1).fill('13');
-  await page.getByRole('button', { name: 'Map hinzufügen' }).click();
-  await page.getByRole('spinbutton').nth(2).fill('9');
-  await page.getByRole('spinbutton').nth(3).fill('13');
+  await scores.nth(0).fill('0');
+  await scores.nth(1).fill('2');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('dialog', { name: 'Ergebnis eintragen' })).toHaveCount(0);
 
@@ -250,6 +257,7 @@ test('finishing a swiss round draws the next one', async ({ page }) => {
   // Play both fixtures of round one.
   for (let i = 0; i < 2; i += 1) {
     await page.getByRole('button', { name: /gegen/ }).nth(i).click();
+    await mapByMap(page);
     const scores = page.getByRole('spinbutton');
     await scores.nth(0).fill('13');
     await scores.nth(1).fill('7');
@@ -262,4 +270,37 @@ test('finishing a swiss round draws the next one', async ({ page }) => {
 
   // Round two now has opponents.
   await expect(page.getByRole('button', { name: 'Offen gegen Offen' })).toHaveCount(0);
+});
+
+/**
+ * A best-of series recorded by its score.
+ *
+ * The panel used to offer map-by-map entry and nothing else, so a finished 2:1
+ * was written on the only row there was — where it reads as a single map won
+ * 2-1, one win out of the two a best-of-three needs. The result was stored, the
+ * match stayed open, and the table ignored it.
+ */
+test('records a series by its score and counts it', async ({ page }) => {
+  await startWizard(page, 'Series Cup', 'Alpha, DE\nBeta, US\nGamma, SE\nDelta, KR');
+
+  await page.getByRole('radio', { name: /Liga \/ Round Robin/ }).check();
+  await finish(page, 'Series Cup');
+
+  await page.getByRole('button', { name: /Alpha.*gegen.*Delta/ }).click();
+
+  // The series score is the way in, without anybody choosing it.
+  await expect(page.getByRole('button', { name: 'Serienstand' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  await page.getByLabel('Mapsiege Alpha').fill('2');
+  await page.getByLabel('Mapsiege Delta').fill('1');
+  await expect(page.getByText(/Alpha gewinnt 2:1/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Speichern' }).click();
+
+  // One played, one won, two maps to one: the table has it.
+  const row = page.getByRole('row').filter({ hasText: 'Alpha' });
+  await expect(row.getByText('2:1')).toBeVisible();
 });

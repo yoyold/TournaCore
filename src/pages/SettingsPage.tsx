@@ -4,6 +4,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@components/ui/Card';
 import { PageHeader } from '@components/ui/PageHeader';
 import { useTheme } from '@hooks/useTheme';
 import { MatchDateRepairCard } from '@pages/MatchDateRepairCard';
+import { SeriesScoreRepairCard } from '@pages/SeriesScoreRepairCard';
 import { StorageCard } from '@pages/StorageCard';
 import {
   useSettingsStore,
@@ -128,6 +129,8 @@ export function SettingsPage() {
         </Card>
 
         <StorageCard />
+
+        <SeriesScoreRepairCard />
 
         <MatchDateRepairCard />
       </div>

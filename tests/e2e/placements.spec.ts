@@ -29,12 +29,9 @@ async function playOut(page: Page, name: string): Promise<void> {
 async function recordWin(page: Page, match: RegExp, maps = 2): Promise<void> {
   await page.getByRole('button', { name: match }).click();
 
-  for (let map = 0; map < maps; map += 1) {
-    if (map > 0) await page.getByRole('button', { name: 'Map hinzufügen' }).click();
-    const scores = page.getByRole('spinbutton');
-    await scores.nth(map * 2).fill('13');
-    await scores.nth(map * 2 + 1).fill('7');
-  }
+  const scores = page.getByRole('spinbutton');
+  await scores.nth(0).fill(String(maps));
+  await scores.nth(1).fill('0');
 
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('dialog', { name: 'Ergebnis eintragen' })).toHaveCount(0);

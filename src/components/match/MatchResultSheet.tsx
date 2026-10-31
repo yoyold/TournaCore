@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@components/ui/Button';
 import { FlagIcon } from '@components/ui/FlagIcon';
 import { applyMatchResult, clearMatchResult } from '@domain/matchFactory';
+import { gamesFromSeries, isPlayableSeries, seriesOf, type SeriesScore } from '@domain/seriesScore';
 import {
   gamesToWin,
   newGameResultId,
@@ -39,6 +40,22 @@ interface DraftGame {
 }
 
 /**
+ * How the result is being written down.
+ *
+ * `series` records the map wins and nothing else — "2:1" — which is how a result
+ * is usually published and all an organiser entering a finished event normally
+ * has. `maps` records the score inside each map, for someone following a series
+ * as it is played.
+ */
+type EntryMode = 'series' | 'maps';
+
+/** Draft series score: strings, for the same reason the map rows are. */
+interface DraftSeries {
+  winsA: string;
+  winsB: string;
+}
+
+/**
  * Side panel for entering a match result.
  *
  * A side sheet rather than a modal, so the bracket stays visible: the point of
@@ -69,6 +86,17 @@ export function MatchResultSheet({
    * both simpler and avoids overwriting half-typed input on an unrelated update.
    */
   const [games, setGames] = useState<DraftGame[]>(() => toDraft(stored?.games ?? []));
+  const [series, setSeries] = useState<DraftSeries>(() => toDraftSeries(stored?.games ?? []));
+
+  /*
+   * Series by default. It is the faster way in and the one that matches what an
+   * organiser actually holds; the individual map scores are detail that is often
+   * simply not known. A record that does carry them opens map by map, so
+   * reopening a result never loses what is in it.
+   */
+  const [mode, setMode] = useState<EntryMode>(() =>
+    hasMapScores(stored?.games ?? []) ? 'maps' : 'series',
+  );
 
   useEffect(() => {
     firstField.current?.focus();
@@ -88,13 +116,36 @@ export function MatchResultSheet({
   const teamB = teamOf(participantOf(match.slotB) ?? '');
   const bothKnown = match.slotA.kind === 'participant' && match.slotB.kind === 'participant';
 
-  const parsed = useMemo(() => toGameResults(games), [games]);
-  const tally = useMemo(() => countWins(parsed), [parsed]);
   const needed = gamesToWin(match.format);
   const maxGames = match.format.kind === 'single_game' ? 1 : match.format.games;
 
+  const draftScore = useMemo<SeriesScore>(
+    () => ({ winsA: Number(series.winsA) || 0, winsB: Number(series.winsB) || 0 }),
+    [series],
+  );
+
+  const seriesPlayable = isPlayableSeries(draftScore, match.format);
+
+  const parsed = useMemo(
+    () =>
+      mode === 'series'
+        ? seriesPlayable
+          ? gamesFromSeries({ score: draftScore, newId: newGameResultId })
+          : []
+        : toGameResults(games),
+    [mode, seriesPlayable, draftScore, games],
+  );
+
+  const tally = useMemo(() => countWins(parsed), [parsed]);
+
   const leader = tally.a > tally.b ? 'A' : tally.b > tally.a ? 'B' : undefined;
   const decided = (tally.a >= needed || tally.b >= needed) && leader !== undefined;
+
+  /** Something was typed, but no series of this length could end that way. */
+  const impossible =
+    mode === 'series' &&
+    !seriesPlayable &&
+    (draftScore.winsA > 0 || draftScore.winsB > 0 || series.winsA !== '' || series.winsB !== '');
 
   const persist = async (outcome?: MatchOutcome, clear = false): Promise<void> => {
     setSaving(true);
@@ -161,19 +212,42 @@ export function MatchResultSheet({
           </p>
         )}
 
-        <fieldset disabled={!bothKnown || saving} className="disabled:opacity-60">
-          <legend className="mb-2 text-xs font-medium text-fg-secondary">{t('result.maps')}</legend>
+        <div role="group" aria-label={t('result.entryMode')} className="mb-3 flex gap-1">
+          {(['series', 'maps'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={mode === option}
+              disabled={!bothKnown || saving}
+              onClick={() => {
+                setMode(option);
+              }}
+              className={cn(
+                'rounded-[var(--radius-control)] border px-3 py-1.5 text-xs transition-colors',
+                mode === option
+                  ? 'border-accent bg-accent-subtle text-accent'
+                  : 'border-line text-fg-secondary hover:border-line-strong',
+              )}
+            >
+              {t(option === 'series' ? 'result.modeSeries' : 'result.modeMaps')}
+            </button>
+          ))}
+        </div>
 
-          <div className="flex flex-col gap-2">
-            {games.map((row, index) => (
-              <div key={row.key} className="flex items-center gap-2">
-                <span className="tabular w-5 shrink-0 text-xs text-fg-muted">{index + 1}</span>
+        <fieldset disabled={!bothKnown || saving} className="disabled:opacity-60">
+          <legend className="mb-2 text-xs font-medium text-fg-secondary">
+            {t(mode === 'series' ? 'result.modeSeries' : 'result.maps')}
+          </legend>
+
+          {mode === 'series' ? (
+            <>
+              <div className="flex items-center gap-2">
                 <ScoreInput
-                  ref={index === 0 ? firstField : undefined}
-                  value={row.scoreA}
-                  label={t('result.scoreFor', { team: teamA?.name ?? 'A', map: index + 1 })}
+                  ref={firstField}
+                  value={series.winsA}
+                  label={t('result.seriesFor', { team: teamA?.name ?? 'A' })}
                   onChange={(value) => {
-                    setGames((current) => patch(current, index, { scoreA: value }));
+                    setSeries((current) => ({ ...current, winsA: value }));
                   }}
                   onSubmit={() => {
                     void persist();
@@ -183,30 +257,66 @@ export function MatchResultSheet({
                   :
                 </span>
                 <ScoreInput
-                  value={row.scoreB}
-                  label={t('result.scoreFor', { team: teamB?.name ?? 'B', map: index + 1 })}
+                  value={series.winsB}
+                  label={t('result.seriesFor', { team: teamB?.name ?? 'B' })}
                   onChange={(value) => {
-                    setGames((current) => patch(current, index, { scoreB: value }));
+                    setSeries((current) => ({ ...current, winsB: value }));
                   }}
                   onSubmit={() => {
                     void persist();
                   }}
                 />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="ml-auto h-8 w-8"
-                  aria-label={t('result.removeMap', { map: index + 1 })}
-                  onClick={() => {
-                    setGames((current) => current.filter((_, i) => i !== index));
-                  }}
-                  icon={<Trash2 size={14} aria-hidden />}
-                />
               </div>
-            ))}
-          </div>
 
-          {games.length < maxGames && (
+              <p className="mt-2 text-2xs text-fg-muted">
+                {t('result.seriesHint', { games: maxGames, needed })}
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {games.map((row, index) => (
+                <div key={row.key} className="flex items-center gap-2">
+                  <span className="tabular w-5 shrink-0 text-xs text-fg-muted">{index + 1}</span>
+                  <ScoreInput
+                    ref={index === 0 ? firstField : undefined}
+                    value={row.scoreA}
+                    label={t('result.scoreFor', { team: teamA?.name ?? 'A', map: index + 1 })}
+                    onChange={(value) => {
+                      setGames((current) => patch(current, index, { scoreA: value }));
+                    }}
+                    onSubmit={() => {
+                      void persist();
+                    }}
+                  />
+                  <span aria-hidden className="text-xs text-fg-muted">
+                    :
+                  </span>
+                  <ScoreInput
+                    value={row.scoreB}
+                    label={t('result.scoreFor', { team: teamB?.name ?? 'B', map: index + 1 })}
+                    onChange={(value) => {
+                      setGames((current) => patch(current, index, { scoreB: value }));
+                    }}
+                    onSubmit={() => {
+                      void persist();
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto h-8 w-8"
+                    aria-label={t('result.removeMap', { map: index + 1 })}
+                    onClick={() => {
+                      setGames((current) => current.filter((_, i) => i !== index));
+                    }}
+                    icon={<Trash2 size={14} aria-hidden />}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {mode === 'maps' && games.length < maxGames && (
             <Button
               variant="ghost"
               size="sm"
@@ -221,13 +331,25 @@ export function MatchResultSheet({
           )}
         </fieldset>
 
-        <p className="mt-4 text-xs text-fg-secondary" aria-live="polite">
-          {decided
-            ? t('result.decided', {
-                team: (leader === 'A' ? teamA?.name : teamB?.name) ?? '',
-                score: `${String(tally.a)}:${String(tally.b)}`,
+        {/*
+          Says what the entry currently amounts to, which is the whole defence
+          against writing down a result that counts for nothing.
+        */}
+        <p
+          className={cn('mt-4 text-xs', impossible ? 'text-warning' : 'text-fg-secondary')}
+          aria-live="polite"
+        >
+          {impossible
+            ? t('result.seriesImpossible', {
+                score: `${String(draftScore.winsA)}:${String(draftScore.winsB)}`,
+                games: maxGames,
               })
-            : t('result.open', { needed })}
+            : decided
+              ? t('result.decided', {
+                  team: (leader === 'A' ? teamA?.name : teamB?.name) ?? '',
+                  score: `${String(tally.a)}:${String(tally.b)}`,
+                })
+              : t('result.open', { needed })}
         </p>
 
         {bothKnown && (
@@ -370,6 +492,29 @@ let rowCounter = 0;
 function emptyRow(): DraftGame {
   rowCounter += 1;
   return { key: `row-${String(rowCounter)}`, scoreA: '', scoreB: '' };
+}
+
+/**
+ * The series score a stored record amounts to, ready to be edited.
+ *
+ * Empty strings for a match nobody has entered yet: a blank field invites a
+ * number, while a pre-filled 0:0 reads like a result that has been recorded.
+ */
+function toDraftSeries(games: readonly GameResult[]): DraftSeries {
+  if (games.length === 0) return { winsA: '', winsB: '' };
+  const { winsA, winsB } = seriesOf(games);
+  return { winsA: String(winsA), winsB: String(winsB) };
+}
+
+/**
+ * Whether the stored maps carry scores of their own.
+ *
+ * A series score is stored as the maps it consists of, with what happened
+ * inside each map left unknown — so all-zero scores mean the record was written
+ * as a series and should open as one.
+ */
+function hasMapScores(games: readonly GameResult[]): boolean {
+  return games.some((game) => game.scoreA !== 0 || game.scoreB !== 0);
 }
 
 function toDraft(games: readonly GameResult[]): DraftGame[] {
