@@ -4,15 +4,24 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardBody } from '@components/ui/Card';
 import { DevelopmentNotice } from '@components/ui/DevelopmentNotice';
 import { PageHeader } from '@components/ui/PageHeader';
+import { useDashboardSummary } from '@hooks/useDashboardSummary';
 
 export function DashboardPage() {
   const { t } = useTranslation();
+  const summary = useDashboardSummary();
 
-  // Values are static until the data layer is wired up.
   const stats = [
-    { icon: Trophy, label: t('pages.dashboard.activeTournaments'), value: '0' },
-    { icon: Shield, label: t('pages.dashboard.registeredTeams'), value: '0' },
-    { icon: CalendarClock, label: t('pages.dashboard.upcomingMatches'), value: '0' },
+    {
+      icon: Trophy,
+      label: t('pages.dashboard.activeTournaments'),
+      value: summary.activeTournaments,
+    },
+    { icon: Shield, label: t('pages.dashboard.registeredTeams'), value: summary.registeredTeams },
+    {
+      icon: CalendarClock,
+      label: t('pages.dashboard.upcomingMatches'),
+      value: summary.upcomingMatches,
+    },
   ];
 
   return (
@@ -38,7 +47,7 @@ export function DashboardPage() {
         ))}
       </div>
 
-      <DevelopmentNotice scope="Aktive Turniere, nächste Matches, letzte Ergebnisse und Schnellaktionen." />
+      <DevelopmentNotice scope="Nächste Matches, letzte Ergebnisse und Schnellaktionen." />
     </>
   );
 }

@@ -203,6 +203,26 @@ describe('deriveTournamentState', () => {
     expect(state.stages[0]?.resolved.matches[0]?.winnerId).toBe('p2');
   });
 
+  /**
+   * "Every match is decided" is vacuously true of a schedule with no matches,
+   * and a tournament whose field is still being assembled has exactly that.
+   * Taken at face value it reports as played out before anyone has turned up.
+   */
+  it('does not call a stage with no fixtures played out', () => {
+    const empty = singleEliminationStage(STAGE_A, 0, 1);
+
+    const state = deriveTournamentState({
+      tournament: { ...tournament(1, [STAGE_A]), status: 'registration' },
+      stages: [empty],
+      matches: [],
+    });
+
+    expect(state.stages[0]?.resolved.matches).toHaveLength(0);
+    expect(state.stages[0]?.isComplete).toBe(false);
+    expect(state.isComplete).toBe(false);
+    expect(state.finalStandings).toEqual([]);
+  });
+
   it('reports final standings once the last stage completes', () => {
     const state = deriveTournamentState({
       tournament: tournament(2, [STAGE_A]),

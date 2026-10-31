@@ -122,6 +122,14 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
     const standings = format.computeStandings(standingsInput);
     const groupStandings = format.computeGroupStandings?.(standingsInput) ?? [];
 
+    /*
+     * A stage with no fixtures at all has not been played out — there was
+     * nothing to play. "Every match is decided" is vacuously true of an empty
+     * schedule, and taking it at face value would call a tournament whose field
+     * is still being assembled finished, and let a later stage seed from it.
+     */
+    const isComplete = resolved.matches.length > 0 && resolved.isComplete;
+
     const entry: DerivedStage = {
       stage,
       structure,
@@ -129,7 +137,7 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
       standings,
       groupStandings,
       seededSlots,
-      isComplete: resolved.isComplete,
+      isComplete,
     };
 
     derived.push(entry);
@@ -138,7 +146,7 @@ export function deriveTournamentState(input: DeriveInput): DerivedTournamentStat
       stageId: stage.id,
       standings,
       resolved,
-      isComplete: resolved.isComplete,
+      isComplete,
       // Lets a following stage seed from "top two of each group".
       ...(groupStandings.length > 0 ? { groupStandings } : {}),
     });
